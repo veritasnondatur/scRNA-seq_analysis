@@ -599,8 +599,8 @@ dev.off()
 # Define thresholds for filtering cells (can be adapted ad gusto)
 # Only such cells that pass these criteria are kept for further analysis
 # The current threshold filters for rather lowly expressed genes
-percent.mt_max <- 10  # maximum percentage of mitochondrial genes (adjust as needed)
-nFeature_RNA_min <- 1000  # minimum number of features per cell
+percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as needed)
+nFeature_RNA_min <- 1500  # minimum number of features per cell
 nFeature_RNA_max <- 10000 # minimum number of features per cell
 nCount_RNA_min <- 1000  # minimum number of RNA counts per cell
 nCount_RNA_max <- 50000  # maximum number of RNA counts per cell
@@ -624,16 +624,16 @@ dev.off()
 
 # Parallelize process
 library(future)
-plan("multicore", workers = 8)  # Set the number of parallel workers
+plan("multicore", workers = 10)  # Set the number of parallel workers
 
-# Increase the maximum global size to 10 GB (2 * 1024^3 bytes)
-options(future.globals.maxSize = 10 * 1024 * 1024 * 1024)
+# Increase the maximum global size to 32 GB (2 * 1024^3 bytes)
+options(future.globals.maxSize = 32 * 1024 * 1024 * 1024)
 
-# Normalization with SCTransform
-n_features <- 50
-so_spleenE15.5_pancreasE14.5 <- SCTransform(so_spleenE15.5_pancreasE14.5,
-                                            verbose = TRUE,
-                                            variable.features.n = n_features)
+# Normalization with NormalizeData
+so_spleenE15.5_pancreasE14.5 <- NormalizeData(so_spleenE15.5_pancreasE14.5)
+
+# Identification of VariableFeatures
+so_spleenE15.5_pancreasE14.5 <- FindVariableFeatures(so_spleenE15.5_pancreasE14.5)
 
 # Scale Seurat object
 so_spleenE15.5_pancreasE14.5 <- ScaleData(so_spleenE15.5_pancreasE14.5)
@@ -651,7 +651,7 @@ dev.off()
 
 # Find Neighbors and perform Clustering (Louvian)
 so_spleenE15.5_pancreasE14.5 <- FindNeighbors(so_spleenE15.5_pancreasE14.5,
-                                              dims = 1:10, 
+                                              dims = 1:20, 
                                               reduction = "pca")
 so_spleenE15.5_pancreasE14.5 <- FindClusters(so_spleenE15.5_pancreasE14.5,
                                              resolution = 0.8, 
@@ -674,7 +674,22 @@ pdf(out_path, width = 15, height = 5)
 plot(p)
 dev.off()
 
-############################### Data integration ###############################
+# Visualize goi as FeaturePlot (merged but unintegrated datasets)
+goi <- c("Tlx1", "Barx1", "Nr2f2", "Fgf9")
+out_path <- paste(output_folder, 
+                  "/UMAP.spleenE15.5_pancreasE14.5_unintegrated.goi.orig.ident.pdf", sep = "")
+pdf(out_path, width = 10, height = 5)
+for (gene in goi) {
+  p <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                   features = gene,
+                   split.by = "orig.ident")
+  plot(p)
+}
+dev.off()  
+
+
+######################## Data integration approach 1 ###########################
+## Filtering of datasets individually, integration afterwards
 # Add mito fraction
 so_spleenE15.5[["percent.mt"]] <- PercentageFeatureSet(so_spleenE15.5,
                                                        pattern = "^mt-")
@@ -685,7 +700,7 @@ so_pancreasE14.5[["percent.mt"]] <- PercentageFeatureSet(so_pancreasE14.5,
 p <- RidgePlot(so_spleenE15.5, 
                features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
                ncol = 1, log = TRUE)
-out_path <- paste(output_folder, "data.spleenE15.5.qc.unfiltered.pdf", sep = "")
+out_path <- paste(output_folder, "int_appr1.data.spleenE15.5.qc.unfiltered.pdf", sep = "")
 pdf(out_path, width = 7, height = 10)
 plot(p)
 dev.off()
@@ -693,13 +708,13 @@ dev.off()
 p <- RidgePlot(so_pancreasE14.5, 
                features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
                ncol = 1, log = TRUE)
-out_path <- paste(output_folder, "data.pancreasE14.5.qc.unfiltered.pdf", sep = "")
+out_path <- paste(output_folder, "int_appr1.data.pancreasE14.5.qc.unfiltered.pdf", sep = "")
 pdf(out_path, width = 7, height = 10)
 plot(p)
 dev.off()
 
 # Filter datasets
-percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as needed)
+percent.mt_max <- 3  # maximum percentage of mitochondrial genes (adjust as needed)
 nFeature_RNA_min <- 1000  # minimum number of features per cell
 nFeature_RNA_max <- 10000 # minimum number of features per cell
 nCount_RNA_min <- 1000  # minimum number of RNA counts per cell
@@ -711,7 +726,7 @@ so_spleenE15.5 <- subset(so_spleenE15.5,
                          nCount_RNA >= nCount_RNA_min &
                          nCount_RNA <= nCount_RNA_max)
 
-percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as needed)
+percent.mt_max <- 3  # maximum percentage of mitochondrial genes (adjust as needed)
 nFeature_RNA_min <- 2000  # minimum number of features per cell
 nFeature_RNA_max <- 10000 # minimum number of features per cell
 nCount_RNA_min <- 1000  # minimum number of RNA counts per cell
@@ -727,7 +742,7 @@ so_pancreasE14.5 <- subset(so_pancreasE14.5,
 p <- RidgePlot(so_spleenE15.5, 
                features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
                ncol = 1, log = TRUE)
-out_path <- paste(output_folder, "data.spleenE15.5.qc.filtered.pdf", sep = "")
+out_path <- paste(output_folder, "int_appr1.data.spleenE15.5.qc.filtered.pdf", sep = "")
 pdf(out_path, width = 7, height = 10)
 plot(p)
 dev.off()
@@ -735,7 +750,7 @@ dev.off()
 p <- RidgePlot(so_pancreasE14.5, 
                features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
                ncol = 1, log = TRUE)
-out_path <- paste(output_folder, "data.pancreasE14.5.qc.filtered.pdf", sep = "")
+out_path <- paste(output_folder, "int_appr1.data.pancreasE14.5.qc.filtered.pdf", sep = "")
 pdf(out_path, width = 7, height = 10)
 plot(p)
 dev.off()
@@ -761,13 +776,13 @@ so_pancreasE14.5 <- RunPCA(so_pancreasE14.5,
 
 # Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
 p <- ElbowPlot(so_spleenE15.5)
-out_path <- paste(output_folder, "data.spleenE15.5.qc.ellbowplot.pdf", sep = "")
+out_path <- paste(output_folder, "int_appr1.data.spleenE15.5.qc.ellbowplot.pdf", sep = "")
 pdf(out_path, width = 5, height = 5)
 plot(p)
 dev.off()
 
 p <- ElbowPlot(so_pancreasE14.5)
-out_path <- paste(output_folder, "data.pancreasE14.5.qc.ellbowplot.pdf", sep = "")
+out_path <- paste(output_folder, "int_appr1.data.pancreasE14.5.qc.ellbowplot.pdf", sep = "")
 pdf(out_path, width = 5, height = 5)
 plot(p)
 dev.off()
@@ -785,18 +800,18 @@ so_pancreasE14.5 <- FindVariableFeatures(so_pancreasE14.5,
 DefaultAssay(so_spleenE15.5) <- "SCT"
 DefaultAssay(so_pancreasE14.5) <- "SCT"
 
-# Integrate spleen E15.5 and pancreas E14.5 datasets
-# Identify integration anchors using the SCT assay
-anchors <- FindIntegrationAnchors(object.list = list(so_spleenE15.5, so_pancreasE14.5), 
-                                  dims = 1:10,  # Use the number of PCs you have already selected
-                                  anchor.features = 100,
-                                  verbose = TRUE)  # You can adjust this as needed
+# Subset the Seurat objects to a smaller number of cells for testing purposes
+# Used randomized subset of cells, since full datasets did not work (due to vector memory limit of 18.0 Gb)
+so_spleenE15.5_sub <- so_spleenE15.5[, sample(1:ncol(so_spleenE15.5), 2000)]
+so_pancreasE14.5_sub <- so_pancreasE14.5[, sample(1:ncol(so_pancreasE14.5), 2000)]
 
-
-# Integrate the data
-### CONTINUE HERE!
+# Run the integration on the subset
+anchors <- FindIntegrationAnchors(object.list = list(so_spleenE15.5_sub, so_pancreasE14.5_sub), 
+                                  dims = 1:15, 
+                                  anchor.features = 1000,
+                                  verbose = TRUE)
 so_spleenE15.5_pancreasE14.5_integrated <- IntegrateData(anchorset = anchors, 
-                                                         dims = 1:10,
+                                                         dims = 1:15,
                                                          verbose = TRUE)
 
 # Scale the integrated data
@@ -817,5 +832,105 @@ so_spleenE15.5_pancreasE14.5_integrated <- FindClusters(so_spleenE15.5_pancreasE
                                                         resolution = 0.8)
 
 # Visualize the UMAP
-DimPlot(so_spleenE15.5_pancreasE14.5_integrated, reduction = "umap")
-                                          
+p <- DimPlot(so_spleenE15.5_pancreasE14.5_integrated, 
+             reduction = "umap",
+             group.by = 'seurat_clusters',
+             label = TRUE)
+outFile <- paste(output_folder, "/int_appr1.UMAP.spleenE15.5_pancreasE14.5_integrated.clusters.pdf", sep = "")
+pdf(outFile, width = 7, height = 5)
+plot(p)
+dev.off()
+
+p <- DimPlot(so_spleenE15.5_pancreasE14.5_integrated, 
+             reduction = "umap",
+             group.by = "orig.ident",
+             label = TRUE)
+outFile <- paste(output_folder, "/int_appr1.UMAP.spleenE15.5_pancreasE14.5_integrated.orig.ident.pdf", sep = "")
+pdf(outFile, width = 7, height = 5)
+plot(p)
+dev.off()
+
+# Visualize as FeaturePlot
+goi <- c("Tlx1", "Barx1", "Nr2f2", "Fgf9")
+outFile <- paste(output_folder,
+                 "/int_appr1.UMAP.spleenE15.5_pancreasE14.5_integrated.goi.orig.ident.pdf", sep = "")
+pdf(outFile, width = 10, height = 5)
+for (gene in goi) {
+  p <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
+                   features = gene,
+                   split.by = "orig.ident")
+  plot(p)
+}
+dev.off()           
+
+# Save the Seurat object
+outFile_spleenE15.5_pancreasE14.5_integrated <- paste(output_folder, "int_appr1.so_spleenE15.5_pancreasE14.5_integrated.rds", sep = "")
+saveRDS(so_spleenE15.5_pancreasE14.5_integrated, file = outFile_spleenE15.5_pancreasE14.5_integrated)
+
+
+######################## Data integration approach 2 ###########################
+## Following Vignette on https://satijalab.org/seurat/articles/integration_introduction
+# Using merged and pre-processed Seurat object with spleen E15.5 and pancreas E14.5 data
+
+# Perform integration
+so_spleenE15.5_pancreasE14.5 <- IntegrateLayers(object = so_spleenE15.5_pancreasE14.5, 
+                                                method = CCAIntegration, 
+                                                orig.reduction = "pca", 
+                                                new.reduction = "integrated.cca",
+                                                verbose = FALSE)
+
+# Re-join layers after integration
+so_spleenE15.5_pancreasE14.5[["RNA"]] <- JoinLayers(so_spleenE15.5_pancreasE14.5[["RNA"]])
+
+# Elbow plot to determine the number of PCs
+p <- ElbowPlot(so_spleenE15.5_pancreasE14.5)
+out_path <- paste(output_folder, "int_appr2.data.spleenE15.5_pancreasE14.5_integrated.qc.ellbowplot.pdf", sep = "")
+pdf(out_path, width = 5, height = 5)
+plot(p)
+dev.off()
+
+# Find Neighbors and Clusters, based on PCs from Ellbowplot
+so_spleenE15.5_pancreasE14.5 <- FindNeighbors(so_spleenE15.5_pancreasE14.5, 
+                                              reduction = "integrated.cca", 
+                                              dims = 1:20)
+so_spleenE15.5_pancreasE14.5 <- FindClusters(so_spleenE15.5_pancreasE14.5, 
+                                             resolution = 0.8)
+
+so_spleenE15.5_pancreasE14.5 <- RunUMAP(so_spleenE15.5_pancreasE14.5, 
+                                        dims = 1:20, 
+                                        reduction = "integrated.cca")
+
+# Visualization
+p <- DimPlot(so_spleenE15.5_pancreasE14.5, 
+             reduction = "umap", 
+             group.by = c("orig.ident", "seurat_clusters"))
+outFile <- paste(output_folder, "/int_appr2.UMAP.spleenE15.5_pancreasE14.5_integrated.orig.ident.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+
+# Visualize as FeaturePlot
+FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+            features = "Tlx1",
+            reduction = "umap",
+            split.by = "orig.ident")
+
+goi <- c("Tlx1", "Barx1", "Nr2f2", "Fgf9",
+         "Mki67", "Cdk1", "Cdkn1c")
+outFile <- paste(output_folder,
+                 "/int_appr2.UMAP.spleenE15.5_pancreasE14.5_integrated.goi.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 12, height = 5)
+for (gene in goi) {
+  p <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                   features = gene,
+                   reduction = "umap",
+                   split.by = "orig.ident")
+  plot(p)
+}
+dev.off()           
+
+# Save the Seurat object
+outFile_spleenE15.5_pancreasE14.5_integrated <- paste(output_folder, "int_appr2.so_spleenE15.5_pancreasE14.5_integrated.rds", sep = "")
+saveRDS(so_spleenE15.5_pancreasE14.5, file = outFile_spleenE15.5_pancreasE14.5_integrated)
