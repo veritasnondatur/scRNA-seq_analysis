@@ -917,20 +917,387 @@ FeaturePlot(so_spleenE15.5_pancreasE14.5,
             split.by = "orig.ident")
 
 goi <- c("Tlx1", "Barx1", "Nr2f2", "Fgf9",
-         "Mki67", "Cdk1", "Cdkn1c")
+         "Mki67", "Cdk1", "Cdkn1c",
+         "Pi15", "Neurl3", "Ackr3", "Tnni1", "Dpt", "Itih2", "Klhl41", "Cybrd1", # upregulated in bulk RNA-seq with Fgf9 mutation (pancreas E14.5)
+         "Calcrl", "F2", "Fibin", "Myl9", "Atp1b4", "Col4a6", "Car2", "Sfrp2", 
+         "Synpo2", "Col25a1", "Tpm2", "Mmp23", "Sema3e", "Cpz", "Chrm2", "Rarres2", 
+         "Actg2", "Cxcl12", "Vwf", "Mgp", "Rerg", "Gm18194", "Ckm", "Clec11a", 
+         "Atp2a1", "Tnnt3", "Vgll2", "Oit3", "Dcn", "Lum", "Tspan8", "Lyz2", 
+         "Gli1", "Ndufa4l2", "Ank1", "Hmox1", "Ndrg4", "Tnnc1", "Gdf10", "Trac", 
+         "Myh7", "Dmtn", "Ednrb", "Cnn1", "Bmper", "Apoa1", "Isl2", "Loxl1", 
+         "Prss35", "Efemp1", "Slc4a1", "Abca8a", "Serpinb6b", "Edn1", "Gm48398", 
+         "Colec11", "Ahnak2", "Nov", "Sox10", "Igfbp6", "Masp1", "Robo2", "Chodl", 
+         "Tmem181b-ps", "Msln", "C3", "Dsc3", "Sh3rf2", "Onecut2", "Mpeg1", 
+         "Anxa1", "Prkg1", "Acta2")
 outFile <- paste(output_folder,
                  "/int_appr2.UMAP.spleenE15.5_pancreasE14.5_integrated.goi.orig.ident.pdf", 
                  sep = "")
 pdf(outFile, width = 12, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
 for (gene in goi) {
-  p <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
-                   features = gene,
-                   reduction = "umap",
-                   split.by = "orig.ident")
-  plot(p)
+  if (gene %in% rownames(so_spleenE15.5_pancreasE14.5)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                     features = gene,
+                     reduction = "umap",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
 }
-dev.off()           
+
+dev.off()
 
 # Save the Seurat object
 outFile_spleenE15.5_pancreasE14.5_integrated <- paste(output_folder, "int_appr2.so_spleenE15.5_pancreasE14.5_integrated.rds", sep = "")
 saveRDS(so_spleenE15.5_pancreasE14.5, file = outFile_spleenE15.5_pancreasE14.5_integrated)
+
+
+############## Test for mutual exclusivity of candidate expression #############
+
+## Is Tlx1 co-expressed or inversely correlated with Sox10 (TF that is overexpressed in Fgf9 null pancreas)?
+# 1. Define gene expression thresholds
+# Extract expression data for Tlx1 and Sox10
+Tlx1_expr <- FetchData(so_spleenE15.5_pancreasE14.5, vars = "Tlx1")
+Sox10_expr <- FetchData(so_spleenE15.5_pancreasE14.5, vars = "Sox10")
+
+# Define a threshold for expression (e.g., greater than 0 means expressed)
+Tlx1_expressed <- Tlx1_expr > 0
+Sox10_expressed <- Sox10_expr > 0
+
+# 2. Identify cells where only one gene is expressed
+# Identify cells where Tlx1 is expressed but Sox10 is not, and vice versa
+mutually_exclusive_Tlx1 <- Tlx1_expressed & !Sox10_expressed
+mutually_exclusive_Sox10 <- Sox10_expressed & !Tlx1_expressed
+both_expressed <- Tlx1_expressed & Sox10_expressed
+
+# Count the number of mutually exclusive cells for each gene
+mutually_exclusive_Tlx1_cells <- sum(mutually_exclusive_Tlx1)
+mutually_exclusive_Sox10_cells <- sum(mutually_exclusive_Sox10)
+
+# Count the number of cells where both genes are expressed
+both_expressed_cells <- sum(both_expressed)
+
+# Print the results
+cat("Number of cells where Tlx1 is expressed but Sox10 is not: ", mutually_exclusive_Tlx1_cells, "\n")
+cat("Number of cells where Sox10 is expressed but Tlx1 is not: ", mutually_exclusive_Sox10_cells, "\n")
+cat("Number of cells where both Tlx1 and Sox10 are expressed: ", both_expressed_cells, "\n")
+
+# 3. Statistical test for mutual exclusivity
+# Create a contingency table for the co-expression of Tlx1 and Sox10
+contingency_table <- table(Tlx1_expressed, Sox10_expressed)
+
+# Perform Fisher's Exact Test (for small numbers) or Chi-square test
+# Fisher's exact test is recommended for small sample sizes (less than 5 in any cell)
+fisher_test_result <- fisher.test(contingency_table)
+
+# Print the p-value from the Fisher's test
+cat("P-value for mutual exclusivity (Fisher's Exact Test): ", fisher_test_result$p.value, "\n")
+
+# 4. Visualizing the results
+# Create a new metadata column to label cells as mutually exclusive for each gene
+so_spleenE15.5_pancreasE14.5$MutualExclusive_Tlx1 <- mutually_exclusive_Tlx1
+so_spleenE15.5_pancreasE14.5$MutualExclusive_Sox10 <- mutually_exclusive_Sox10
+so_spleenE15.5_pancreasE14.5$Both_Expressed <- both_expressed
+
+# Visualize mutual exclusivity of Tlx1 and Sox10 using UMAP
+library(patchwork)
+
+# Generate individual FeaturePlots for each feature
+p1 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Tlx1", 
+                  reduction = "umap")
+p2 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Sox10", 
+                  reduction = "umap")
+p3 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "Both_Expressed", 
+                  reduction = "umap")
+
+# Combine the plots into one row
+combined_plot <- p1 + p2 + p3 + plot_layout(ncol = 3)  # Arrange them in 1 row, 3 columns
+
+# Define the output file path
+outFile <- paste(output_folder, "/int_appr2.UMAP.Mutual_exclusive_Tlx1+Sox10.multipanel.pdf", sep = "")
+
+# Save the combined plot as a PDF
+pdf(outFile, width = 15, height = 5)  # Adjust the height/width for your preference
+print(combined_plot)  # Print the combined plot to the PDF
+dev.off()
+
+# Visualize mutual exclusivity with a Venn diagram (with two overlapping circles)
+library(VennDiagram)
+library(grid)
+library(futile.logger)
+
+# Define the output file path for the Venn diagram
+outFile_venn <- paste(output_folder, "/int_appr2.VennDiagram.MutualExclusiveExpression_Tlx1+Sox10.pdf", sep = "")
+
+# Open a PDF device to save the plot
+pdf(outFile_venn, width = 10, height = 5)
+
+# Create the Venn diagram with two circles
+venn.plot <- venn.diagram(
+  x = list(
+    "Tlx1 expressed" = which(Tlx1_expressed),
+    "Sox10 expressed" = which(Sox10_expressed)
+  ),
+  category.names = c("Tlx1 expressed", "Sox10 expressed"),
+  filename = NULL,  # We are using grid.draw() to plot, so no need for a file name here
+  output = TRUE,
+  lwd = 2,  # Line width of the circles
+  fill = c("red", "blue"),  # Fill color for the circles
+  alpha = c(0.5, 0.5),  # Transparency of the circles
+  cex = 1.5,  # Text size for main title
+  cat.cex = 1.5,  # Category text size
+  cat.pos = 0,  # Category text position (0 is top-center)
+  main = "Venn Diagram of Gene Expression, spleenE15.5 + pancreasE14.5",  # Main title
+  family = "sans",  # Use a generic sans-serif font (usually Helvetica or Arial)
+  cat.fontface = 1,  # Regular font style for category names
+  fontface = 1  # Regular font style for main title
+)
+
+# Plot the Venn diagram
+grid.draw(venn.plot)
+
+# Close the PDF device to save the plot
+dev.off()
+
+### Stratification of mutual expression by orig.ident (pancreas and spleen data)
+# Generate individual FeaturePlots for each feature, stratified by 'orig.ident'
+p1 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Tlx1", 
+                  reduction = "umap",
+                  split.by = "orig.ident")
+p2 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Sox10", 
+                  reduction = "umap",
+                  split.by = "orig.ident")
+p3 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "Both_Expressed", 
+                  reduction = "umap",
+                  split.by = "orig.ident")
+
+# Define the output file paths for each plot
+outFile1 <- paste(output_folder, "/int_appr2.UMAP.MutualExclusive_Tlx1(noSox10).orig.ident.pdf", sep = "")
+outFile2 <- paste(output_folder, "/int_appr2.UMAP.MutualExclusive_Sox10(noTlx1).orig.ident.pdf", sep = "")
+outFile3 <- paste(output_folder, "/int_appr2.UMAP.Both_Expressed(Tlx1+Sox10).orig.ident.pdf", sep = "")
+
+# Save each plot as a separate PDF
+pdf(outFile1, width = 10, height = 5)
+print(p1)  # Print the plot p1 to the PDF
+dev.off()
+
+pdf(outFile2, width = 10, height = 5)
+print(p2)  # Print the plot p2 to the PDF
+dev.off()
+
+pdf(outFile3, width = 10, height = 5)
+print(p3)  # Print the plot p3 to the PDF
+dev.off()
+
+# Generate individual ViolinPlots for each feature, stratified by 'seurat_clusters'
+p1 <- VlnPlot(so_spleenE15.5_pancreasE14.5, 
+              features = "MutualExclusive_Tlx1", 
+              group.by = "seurat_clusters")  # Stratified by 'seurat_clusters'
+
+p2 <- VlnPlot(so_spleenE15.5_pancreasE14.5, 
+              features = "MutualExclusive_Sox10", 
+              group.by = "seurat_clusters")  # Stratified by 'seurat_clusters'
+
+p3 <- VlnPlot(so_spleenE15.5_pancreasE14.5, 
+              features = "Both_Expressed", 
+              group.by = "seurat_clusters")  # Stratified by 'seurat_clusters'
+
+# Define the output file paths for each plot
+outFile1 <- paste(output_folder, "/int_appr2.Violin.MutualExclusive_Tlx1(noSox10).seurat_clusters.pdf", sep = "")
+outFile2 <- paste(output_folder, "/int_appr2.Violin.MutualExclusive_Sox10(noTlx1).seurat_clusters.pdf", sep = "")
+outFile3 <- paste(output_folder, "/int_appr2.Violin.Both_Expressed(Tlx1+Sox10).seurat_clusters.pdf", sep = "")
+
+# Save each plot as a separate PDF
+pdf(outFile1, width = 10, height = 7)
+print(p1)  # Print the plot p1 to the PDF
+dev.off()
+
+pdf(outFile2, width = 10, height = 7)
+print(p2)  # Print the plot p2 to the PDF
+dev.off()
+
+pdf(outFile3, width = 10, height = 7)
+print(p3)  # Print the plot p3 to the PDF
+dev.off()
+
+
+## Is Tlx1 co-expressed or inversely correlated with Klf4 (TF candidate from spleen project)?
+# 1. Define gene expression thresholds
+# Extract expression data for Tlx1 and Klf4
+Tlx1_expr <- FetchData(so_spleenE15.5_pancreasE14.5, vars = "Tlx1")
+Klf4_expr <- FetchData(so_spleenE15.5_pancreasE14.5, vars = "Klf4")
+
+# Define a threshold for expression (e.g., greater than 0 means expressed)
+Tlx1_expressed <- Tlx1_expr > 0
+Klf4_expressed <- Klf4_expr > 0
+
+# 2. Identify cells where only one gene is expressed
+# Identify cells where Tlx1 is expressed but Klf4 is not, and vice versa
+mutually_exclusive_Tlx1 <- Tlx1_expressed & !Klf4_expressed
+mutually_exclusive_Klf4 <- Klf4_expressed & !Tlx1_expressed
+both_expressed <- Tlx1_expressed & Klf4_expressed
+
+# Count the number of mutually exclusive cells for each gene
+mutually_exclusive_Tlx1_cells <- sum(mutually_exclusive_Tlx1)
+mutually_exclusive_Klf4_cells <- sum(mutually_exclusive_Klf4)
+
+# Count the number of cells where both genes are expressed
+both_expressed_cells <- sum(both_expressed)
+
+# Print the results
+cat("Number of cells where Tlx1 is expressed but Klf4 is not: ", mutually_exclusive_Tlx1_cells, "\n")
+cat("Number of cells where Klf4 is expressed but Tlx1 is not: ", mutually_exclusive_Klf4_cells, "\n")
+cat("Number of cells where both Tlx1 and Klf4 are expressed: ", both_expressed_cells, "\n")
+
+# 3. Statistical test for mutual exclusivity
+# Create a contingency table for the co-expression of Tlx1 and Klf4
+contingency_table <- table(Tlx1_expressed, Klf4_expressed)
+
+# Perform Fisher's Exact Test (for small numbers) or Chi-square test
+# Fisher's exact test is recommended for small sample sizes (less than 5 in any cell)
+fisher_test_result <- fisher.test(contingency_table)
+
+# Print the p-value from the Fisher's test
+cat("P-value for mutual exclusivity (Fisher's Exact Test): ", fisher_test_result$p.value, "\n")
+
+# 4. Visualizing the results
+# Create a new metadata column to label cells as mutually exclusive for each gene
+so_spleenE15.5_pancreasE14.5$MutualExclusive_Tlx1 <- mutually_exclusive_Tlx1
+so_spleenE15.5_pancreasE14.5$MutualExclusive_Klf4 <- mutually_exclusive_Klf4
+so_spleenE15.5_pancreasE14.5$Both_Expressed <- both_expressed
+
+# Visualize mutual exclusivity of Tlx1 and Klf4 using UMAP
+library(patchwork)
+
+# Generate individual FeaturePlots for each feature
+p1 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Tlx1", 
+                  reduction = "umap")
+p2 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Klf4", 
+                  reduction = "umap")
+p3 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "Both_Expressed", 
+                  reduction = "umap")
+
+# Combine the plots into one row
+combined_plot <- p1 + p2 + p3 + plot_layout(ncol = 3)  # Arrange them in 1 row, 3 columns
+
+# Define the output file path
+outFile <- paste(output_folder, "/int_appr2.UMAP.Mutual_exclusive_Tlx1+Klf4.multipanel.pdf", sep = "")
+
+# Save the combined plot as a PDF
+pdf(outFile, width = 15, height = 5)  # Adjust the height/width for your preference
+print(combined_plot)  # Print the combined plot to the PDF
+dev.off()
+
+# Visualize mutual exclusivity with a Venn diagram (with two overlapping circles)
+library(VennDiagram)
+library(grid)
+library(futile.logger)
+
+# Define the output file path for the Venn diagram
+outFile_venn <- paste(output_folder, "/int_appr2.VennDiagram.MutualExclusiveExpression_Tlx1+Klf4.pdf", sep = "")
+
+# Open a PDF device to save the plot
+pdf(outFile_venn, width = 10, height = 5)
+
+# Create the Venn diagram with two circles
+venn.plot <- venn.diagram(
+  x = list(
+    "Tlx1 expressed" = which(Tlx1_expressed),
+    "Klf4 expressed" = which(Klf4_expressed)
+  ),
+  category.names = c("Tlx1 expressed", "Klf4 expressed"),
+  filename = NULL,  # We are using grid.draw() to plot, so no need for a file name here
+  output = TRUE,
+  lwd = 2,  # Line width of the circles
+  fill = c("red", "blue"),  # Fill color for the circles
+  alpha = c(0.5, 0.5),  # Transparency of the circles
+  cex = 1.5,  # Text size for main title
+  cat.cex = 1.5,  # Category text size
+  cat.pos = 0,  # Category text position (0 is top-center)
+  main = "Venn Diagram of Gene Expression, spleenE15.5 + pancreasE14.5",  # Main title
+  family = "sans",  # Use a generic sans-serif font (usually Helvetica or Arial)
+  cat.fontface = 1,  # Regular font style for category names
+  fontface = 1  # Regular font style for main title
+)
+
+# Plot the Venn diagram
+grid.draw(venn.plot)
+
+# Close the PDF device to save the plot
+dev.off()
+
+### Stratification of mutual expression by orig.ident (pancreas and spleen data)
+# Generate individual FeaturePlots for each feature, stratified by 'orig.ident'
+p1 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Tlx1", 
+                  reduction = "umap",
+                  split.by = "orig.ident")
+p2 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "MutualExclusive_Klf4", 
+                  reduction = "umap",
+                  split.by = "orig.ident")
+p3 <- FeaturePlot(so_spleenE15.5_pancreasE14.5, 
+                  features = "Both_Expressed", 
+                  reduction = "umap",
+                  split.by = "orig.ident")
+
+# Define the output file paths for each plot
+outFile1 <- paste(output_folder, "/int_appr2.UMAP.MutualExclusive_Tlx1(noKlf4)_UMAP.orig.ident.pdf", sep = "")
+outFile2 <- paste(output_folder, "/int_appr2.UMAP.MutualExclusive_Klf4(noTlx1)_UMAP.orig.ident.pdf", sep = "")
+outFile3 <- paste(output_folder, "/int_appr2.UMAP.Both_Expressed(Tlx1+Klf4).orig.ident.pdf", sep = "")
+
+# Save each plot as a separate PDF
+pdf(outFile1, width = 10, height = 5)
+print(p1)  # Print the plot p1 to the PDF
+dev.off()
+
+pdf(outFile2, width = 10, height = 5)
+print(p2)  # Print the plot p2 to the PDF
+dev.off()
+
+pdf(outFile3, width = 10, height = 5)
+print(p3)  # Print the plot p3 to the PDF
+dev.off()
+
+# Generate individual ViolinPlots for each feature, stratified by 'seurat_clusters'
+p1 <- VlnPlot(so_spleenE15.5_pancreasE14.5, 
+              features = "MutualExclusive_Tlx1", 
+              group.by = "seurat_clusters")  # Stratified by 'seurat_clusters'
+
+p2 <- VlnPlot(so_spleenE15.5_pancreasE14.5, 
+              features = "MutualExclusive_Klf4", 
+              group.by = "seurat_clusters")  # Stratified by 'seurat_clusters'
+
+p3 <- VlnPlot(so_spleenE15.5_pancreasE14.5, 
+              features = "Both_Expressed", 
+              group.by = "seurat_clusters")  # Stratified by 'seurat_clusters'
+
+# Define the output file paths for each plot
+outFile1 <- paste(output_folder, "/int_appr2.Violin.MutualExclusive_Tlx1(noKlf4).seurat_clusters.pdf", sep = "")
+outFile2 <- paste(output_folder, "/int_appr2.Violin.MutualExclusive_Klf4(noTlx1).seurat_clusters.pdf", sep = "")
+outFile3 <- paste(output_folder, "/int_appr2.Violin.Both_Expressed(Tlx1+Klf4).seurat_clusters.pdf", sep = "")
+
+# Save each plot as a separate PDF
+pdf(outFile1, width = 10, height = 7)
+print(p1)  # Print the plot p1 to the PDF
+dev.off()
+
+pdf(outFile2, width = 10, height = 7)
+print(p2)  # Print the plot p2 to the PDF
+dev.off()
+
+pdf(outFile3, width = 10, height = 7)
+print(p3)  # Print the plot p3 to the PDF
+dev.off()
