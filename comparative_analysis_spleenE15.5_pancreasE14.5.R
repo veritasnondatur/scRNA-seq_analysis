@@ -877,7 +877,7 @@ so_spleenE15.5_pancreasE14.5 <- IntegrateLayers(object = so_spleenE15.5_pancreas
                                                 method = CCAIntegration, 
                                                 orig.reduction = "pca", 
                                                 new.reduction = "integrated.cca",
-                                                verbose = FALSE)
+                                                verbose = TRUE)
 
 # Re-join layers after integration
 so_spleenE15.5_pancreasE14.5[["RNA"]] <- JoinLayers(so_spleenE15.5_pancreasE14.5[["RNA"]])
@@ -1301,3 +1301,118 @@ dev.off()
 pdf(outFile3, width = 10, height = 7)
 print(p3)  # Print the plot p3 to the PDF
 dev.off()
+
+
+######################## Data integration approach 3 ###########################
+# Using Nuos E15.5 spleen Seurat object and pre-processed Seurat object of pancreas E14.5 data
+
+### PREPARATION OF DATASETS
+# Load required libraries
+library(Seurat)
+library(patchwork)
+
+# Increase the maximum global size to 32 GB (2 * 1024^3 bytes)
+options(future.globals.maxSize = 32 * 1024 * 1024 * 1024)
+
+# Define output folder (for results)
+output_folder <- "~/Documents/postdoc/collaboration/Maurizio/comparative_analysis_spleen+pancreas/integrated_analysis_spleen+pancreas/"
+
+# Load raw data
+so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/E15.5_spleen/E15.5_MR4_subsetNoWeird.rds")
+
+so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/Fgf9null_datasets/scRNA-seq/pancreas_Fgf9null/results_WT/so_pancreas_WT.rds")
+
+# Check memory usage before and after merge (due to Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
+pryr::mem_used()
+
+# Merge E14.5 pancreas and E15.5 spleen datasets (stored in different layers)
+# Rename the datasets directly in the add.cell.ids argument
+so_spleenE15.5_pancreasE14.5 <- merge(so_spleenE15.5, y = so_pancreasE14.5,
+                                      add.cell.ids = c("spleenE15.5", "pancreasE14.5"),
+                                      project = "spleenE15.5_pancreasE14.5_merged")
+
+# Change the 'orig.ident' metadata to reflect the new names
+# Adjust the 'gsub' pattern based on actual 'orig.ident' values
+so_spleenE15.5_pancreasE14.5$orig.ident <- gsub("^MR4", "spleen_E15.5", so_spleenE15.5_pancreasE14.5$orig.ident)
+so_spleenE15.5_pancreasE14.5$orig.ident <- gsub("^pancreas_E14.5", "pancreas_E14.5", so_spleenE15.5_pancreasE14.5$orig.ident)
+
+# QC stats before filtering
+p <- RidgePlot(so_spleenE15.5_pancreasE14.5, 
+               features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
+               ncol = 1, log = TRUE,
+               group.by = "orig.ident")
+out_path <- paste(output_folder, "int_appr3.data.spleenE15.5_pancreasE14.5.qcRidgepPlot.pdf", sep = "")
+pdf(out_path, width = 7, height = 10)
+plot(p)
+dev.off()
+
+# Normalization with SCTransform
+n_features <- 100
+so_spleenE15.5_pancreasE14.5 <- SCTransform(so_spleenE15.5_pancreasE14.5,
+                                            verbose = TRUE,
+                                            variable.features.n = n_features)
+
+# Scale Seurat object
+#so_spleenE15.5_pancreasE14.5 <- ScaleData(so_spleenE15.5_pancreasE14.5)
+
+# Perform PCA analysis
+so_spleenE15.5_pancreasE14.5 <- RunPCA(so_spleenE15.5_pancreasE14.5,
+                                       verbose = FALSE, npcs = 30)
+
+# Run UMAP
+so_spleenE15.5_pancreasE14.5 <- RunUMAP(so_spleenE15.5_pancreasE14.5, 
+                                        dims = 1:30, 
+                                        reduction = "pca")
+
+# Visualize datasets as UMAP before Integration
+p <- DimPlot(so_spleenE15.5_pancreasE14.5, 
+             reduction = "umap", 
+             group.by = c("orig.ident", "seurat_clusters"))
+outFile <- paste(output_folder, "/int_appr3.UMAP.spleenE15.5_pancreasE14.5_NotIntegrated.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+# Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
+p <- ElbowPlot(so_spleenE15.5_pancreasE14.5,
+               ndims = 30)
+out_path <- paste(output_folder, "int_appr3.data.qc.ellbowplot.pdf", sep = "")
+pdf(out_path, width = 5, height = 5)
+plot(p)
+dev.off()
+
+
+### ACTUAL INTEGRATION PART
+# Change the default assay to "SCT"
+# Set the default assay to "SCT" for both objects
+DefaultAssay(so_spleenE15.5) <- "SCT"
+DefaultAssay(so_pancreasE14.5) <- "SCT"
+
+# Check memory usage before and after merge (due to Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
+pryr::mem_used()
+
+# Identify variable features for both datasets
+so_spleenE15.5 <- FindVariableFeatures(so_spleenE15.5, selection.method = "vst", nfeatures = 2000)
+so_pancreasE14.5 <- FindVariableFeatures(so_pancreasE14.5, selection.method = "vst", nfeatures = 2000)
+
+# Run PCA on both datasets
+so_spleenE15.5 <- RunPCA(so_spleenE15.5, npcs = 30, verbose = FALSE)
+so_pancreasE14.5 <- RunPCA(so_pancreasE14.5, npcs = 30, verbose = FALSE)
+
+# Find integration anchors between the two Seurat objects
+anchors <- FindIntegrationAnchors(object.list = list(so_spleenE15.5, so_pancreasE14.5), dims = 1:30)
+
+# Integrate the data
+so_integrated <- IntegrateData(anchorset = anchors, dims = 1:30)
+
+# Scale the integrated data
+so_integrated <- ScaleData(so_integrated)
+
+# Perform PCA
+so_integrated <- RunPCA(so_integrated, npcs = 30)
+
+# Run UMAP for visualization
+so_integrated <- RunUMAP(so_integrated, dims = 1:30)
+
+# Visualize with UMAP
+DimPlot(so_integrated, reduction = "umap")
