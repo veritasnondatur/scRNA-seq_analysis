@@ -83,7 +83,49 @@ so_pancreas_Fgf9WT_filtered_norm <- SCTransform(so_pancreas_Fgf9WT_filtered,
                                                 verbose = TRUE,
                                                 variable.features.n = n_features)
 
-# PCA (no changes for PCA)
+############## Cell Cycle regression (Script can be run from here)
+# 1. Use Seurat's predefined cell cycle genes
+cc.genes <- Seurat::cc.genes
+
+# 2. Perform cell cycle scoring
+# Function to capitalize only the first letter and make the rest lowercase
+capitalize_first_letter <- function(x) {
+  # Make the entire string lowercase, then capitalize the first letter
+  return(paste0(toupper(substring(x, 1, 1)), tolower(substring(x, 2))))
+}
+
+# Apply this function to the Seurat predefined cell cycle genes
+cc.genes_corrected <- list(
+  s.genes = sapply(cc.genes$s.genes, capitalize_first_letter),   # S phase genes
+  g2m.genes = sapply(cc.genes$g2m.genes, capitalize_first_letter)  # G2M phase genes
+)
+
+# Perform cell cycle scoring using the corrected gene sets
+so_Fgf9WT_processed <- CellCycleScoring(so_Fgf9WT_processed, 
+                                        s.features = cc.genes_corrected$s.genes,   # S phase genes
+                                        g2m.features = cc.genes_corrected$g2m.genes,  # G2M phase genes
+                                        set.ident = TRUE
+)
+# This adds two new metadata columns, `S.Score` and `G2M.Score`, for each cell indicating its level of expression in the S and G2M phases.
+
+# 3. Regress out cell cycle scores during scaling
+so_Fgf9WT_processed <- ScaleData(
+  so_Fgf9WT_processed,
+  features = rownames(so_Fgf9WT_processed),
+  vars.to.regress = c("S.Score", "G2M.Score"),
+  verbose = TRUE
+)
+
+# 4. Visualize the S and G2M scores on UMAP (optional)
+p <- FeaturePlot(so_Fgf9WT_processed, 
+                 features = c("S.Score", "G2M.Score"), 
+                 reduction = "umap")
+outFile_pancreas_WT <- paste(outFolder_pancreas_WT, "/UMAP.CellCycleRegressed.pdf", sep = "")
+pdf(outFile_pancreas_WT, width = 15, height = 10)
+plot(p)
+dev.off()
+
+# PCA
 so_pancreas_Fgf9WT_filtered_norm <- RunPCA(so_pancreas_Fgf9WT_filtered_norm,
                                            verbose = FALSE, npcs = 30)
 
@@ -110,7 +152,6 @@ so_pancreas_Fgf9WT_filtered_norm <- FindClusters(so_pancreas_Fgf9WT_filtered_nor
 
 # Save the Seurat object
 saveRDS(so_pancreas_Fgf9WT_filtered_norm, file = so_path_pancreas_WT)
-
 
 #UMAP plot (clusters)
 p <- DimPlot(object = so_pancreas_Fgf9WT_filtered_norm,
@@ -215,8 +256,7 @@ for (gene in goi) {
 }
 dev.off()
 
-
-############## ANALYSIS WITH WT DATA ONLY
+############## ANALYSIS WITH WT DATA ONLY (Script can be run from here)
 # Load data
 so_Fgf9WT_processed <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/Fgf9null_datasets/scRNA-seq/pancreas_Fgf9null/results_WT/so_pancreas_WT.rds")
 outFolder_pancreas_WT <- "/Users/veralaub/Documents/postdoc/collaboration/Maurizio/Fgf9null_datasets/scRNA-seq/pancreas_Fgf9null/results_WT/"
