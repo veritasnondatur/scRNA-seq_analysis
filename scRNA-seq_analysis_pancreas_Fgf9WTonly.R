@@ -101,23 +101,22 @@ cc.genes_corrected <- list(
 )
 
 # Perform cell cycle scoring using the corrected gene sets
-so_Fgf9WT_processed <- CellCycleScoring(so_Fgf9WT_processed, 
-                                        s.features = cc.genes_corrected$s.genes,   # S phase genes
-                                        g2m.features = cc.genes_corrected$g2m.genes,  # G2M phase genes
-                                        set.ident = TRUE
+so_pancreas_Fgf9WT_filtered_norm <- CellCycleScoring(so_pancreas_Fgf9WT_filtered_norm,
+                                                     s.features = cc.genes_corrected$s.genes,   # S phase genes
+                                                     g2m.features = cc.genes_corrected$g2m.genes,  # G2M phase genes
+                                                     set.ident = TRUE
 )
 # This adds two new metadata columns, `S.Score` and `G2M.Score`, for each cell indicating its level of expression in the S and G2M phases.
 
 # 3. Regress out cell cycle scores during scaling
-so_Fgf9WT_processed <- ScaleData(
-  so_Fgf9WT_processed,
-  features = rownames(so_Fgf9WT_processed),
-  vars.to.regress = c("S.Score", "G2M.Score"),
-  verbose = TRUE
+so_pancreas_Fgf9WT_filtered_norm <- ScaleData(so_pancreas_Fgf9WT_filtered_norm,
+                                              features = rownames(so_pancreas_Fgf9WT_filtered_norm),
+                                              vars.to.regress = c("S.Score", "G2M.Score"),
+                                              verbose = TRUE
 )
 
 # 4. Visualize the S and G2M scores on UMAP (optional)
-p <- FeaturePlot(so_Fgf9WT_processed, 
+p <- FeaturePlot(so_pancreas_Fgf9WT_filtered_norm, 
                  features = c("S.Score", "G2M.Score"), 
                  reduction = "umap")
 outFile_pancreas_WT <- paste(outFolder_pancreas_WT, "/UMAP.CellCycleRegressed.pdf", sep = "")
@@ -137,7 +136,7 @@ plot(p)
 dev.off()
 
 # Store number of principle components in new variable (to be used later)
-pca_dim_sel <- 21
+pca_dim_sel <- 13
 
 # UMAP
 so_pancreas_Fgf9WT_filtered_norm <- RunUMAP(so_pancreas_Fgf9WT_filtered_norm,
