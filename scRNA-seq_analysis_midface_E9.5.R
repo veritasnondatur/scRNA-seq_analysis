@@ -1,193 +1,349 @@
-## scRNA-seq data analysis with Seurat
+## scRNA-seq data analysis of midface E9.5 with Seurat
+# author: Vera Laub
+# last edited: 2025-01-16
 
 # Load libraries
 library(Seurat)
 library(tidyverse)
 library(ggplot2)
 library(patchwork)
+library(reticulate)
 
 # to unzip downloaded files with terminal:
 # cd ~/filepath
 # tar -xvf GSE125416_RAW.tar 
 # gunzip *.gz 
 
-# Read barcodes, features (genes) and matrix file: https://www.youtube.com/watch?v=43Z13DS_emQ&list=PLOLdjuxsfI4N1SdaQQYXGoa5Z93hPxWVY
-data <- Read10X(data.dir = '/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix')
+# Set out folder (to store results)
+out_folder <- "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/results/"
 
-# Preview of loaded data
-data
+# Increase the maximum global size to 2 GB (2 * 1024^3 bytes)
+options(future.globals.maxSize = 2 * 1024 * 1024 * 1024)
 
-# Create Seurat objects: https://www.youtube.com/watch?v=cMT92ZExyAQ&list=PLOLdjuxsfI4N1SdaQQYXGoa5Z93hPxWVY&index=2
-data <- CreateSeuratObject(counts = data, project = "E9.5_midface", min.cells = 3, min.features = 1000)  # "Cells were filtered to ensure inclusion of only those showing a number of total expressed transcripts between 3000 and 25,000, corresponding to at least 1000 expressed genes" (Losa et al., 2023)
-class(data)
+# Read barcodes, features (genes) and matrix files
+midface_E9.5 <- Read10X(data.dir = '/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix')
 
-# View Seurat objects
-data
-colnames(data)
-rownames(data)
-#view(data)                                                                        # or click D in Data list in upper right window
-#view(data@meta.data)
-
-# Save Seurat object
-saveRDS(data, file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF.RDS")
-
-# Read Seurat Objects
-data <- readRDS("/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF.RDS")
+# Create Seurat object
+so_midface_E9.5 <- CreateSeuratObject(counts = midface_E9.5, 
+                                      project = "midface_E9.5", 
+                                      min.cells = 3, min.features = 1000)      # "Cells were filtered to ensure inclusion of only those showing a number of total expressed transcripts between 3000 and 25,000, corresponding to at least 1000 expressed genes" (Losa et al., 2023)
 
 
 ######## Standard pre-processing workflow
-# Quality control and selecting cells for further analysis
-# Data normalization (NormalizeData)
-# Identification of high variability features [feature selection] (FindVariableFeatures)
-# Data scaling (ScaleData)
+# Add mito fraction to object meta.data
+so_midface_E9.5 <- PercentageFeatureSet(so_midface_E9.5, 
+                                        pattern = "^mt-", 
+                                        col.name = "percent.mt")
 
-### QC metrics: "nFeature_RNA", "nCount_RNA", "percent.mt"
-
-# Low quality cells or empty droplets often have very few genes (low nFeature_RNA & nCount_RNA)
-# Cell doublets or multiples have high values of nFeature_RNA & nCount_RNA
-# low-quality/dying cells often have high percentage of mitochondrial genes (percent.mt)
-
-# View QC metrics
-view(data@meta.data)
-range(data$nFeature_RNA)
-range(data$nCount_RNA)
-
-# Store mitochondrial percentage in object meta.data
-data <- PercentageFeatureSet(data, 
-                             pattern = "^MT-", 
-                             col.name = "percent.mt")
-
-#view(data@meta.data)
-range(data$percent.mt)
-
+# QC stats before filtering
+p <- RidgePlot(so_midface_E9.5, 
+               features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
+               ncol = 1, log = TRUE)
+out_path <- paste(out_folder, "midface_E9.5.qc.unfiltered.pdf", sep = "")
+pdf(out_path, width = 5, height = 5)
+plot(p)
+dev.off()
 
 ### Selecting cells for further analysis
+percent.mt_max <- 5          # maximum percentage of mitochondrial genes (adjust as needed)
+nFeature_RNA_min <- 100      # minimum number of features per cell
+nFeature_RNA_max <- 5000     # minimum number of features per cell
+nCount_RNA_min <- 100        # minimum number of RNA counts per cell
+nCount_RNA_max <- 50000      # maximum number of RNA counts per cell
 
-# Visualize QC metrics as a violin plot
-VlnPlot(data, features = c("nFeature_RNA", "nCount_RNA",                        # comment: Marta etc. seem to have uploaded some sort of prefiltered dataset, as there are no mitochondrial genes present here
-                           "percent.mt"), ncol = 3)
+# Subset the Seurat object (filter based on thresholds above)
+so_midface_E9.5 <- subset(so_midface_E9.5,
+                          subset = percent.mt <= percent.mt_max &
+                          nFeature_RNA >= nFeature_RNA_min &
+                          nFeature_RNA <= nFeature_RNA_max &
+                          nCount_RNA >= nCount_RNA_min &
+                          nCount_RNA <= nCount_RNA_max)
 
-# Use subset function to retrieve a certain subset of cells
-data <- subset(data,                                                            # implement filters according to Losa et al., 2023: Cells with...
-               subset = nFeature_RNA >3000 & nFeature_RNA <25000                # "number of total expressed transcripts between 3000 and 25,000, corresponding to at least 1000 expressed genes"
-               # & nCount_RNA < 20000                            
-               & percent.mt < 10)                                               # "the mass of transcripts derived from the mitochondrial chromosomes representing less than 10% of the total."
+### Data normalization (using SCTransform)
+# QC stats after filtering
+p <- RidgePlot(so_midface_E9.5,
+               features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
+               ncol = 1, log = TRUE)
+out_file <- paste(out_folder, "midface_E9.5.data.qc.filtered.pdf", sep = "")
+pdf(out_file, width = 4, height = 4)
+plot(p)
+dev.off()
 
-# Save Seurat object
-saveRDS(data, file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF_filter-mt.RDS")
+# Exclude mitochondrial genes 
+keep <- grep("^mt-", rownames(so_midface_E9.5[["RNA"]]), invert = TRUE)
+so_midface_E9.5 <- CreateSeuratObject(counts = GetAssayData(so_midface_E9.5[["RNA"]], layer = "counts")[keep, ], 
+                                      project = "pancreas_E14.5", 
+                                      meta.data = so_midface_E9.5@meta.data)
 
+# Check memory usage before and after merge (to monitor Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
+pryr::mem_used()
 
-### Data normalization (NormalizeData)
+# Normalization with SCTransform
+n_features <- 3000
+so_midface_E9.5 <- SCTransform(so_midface_E9.5,
+                               verbose = TRUE,
+                               variable.features.n = n_features)
 
-# Retrieve merged dataset from previous steps
-data <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF_filter-mt.RDS")
+############## Cell Cycle regression (Script can be run from here)
+# 1. Use Seurat's predefined cell cycle genes
+cc.genes <- Seurat::cc.genes
 
-# Inspect counts for dataset
-data@assays[["RNA"]]@layers[["counts"]]@x
-range(data@assays[["RNA"]]@layers[["counts"]]@x)
+# 2. Perform cell cycle scoring
+# Function to capitalize only the first letter and make the rest lowercase
+capitalize_first_letter <- function(x) {
+  # Make the entire string lowercase, then capitalize the first letter
+  return(paste0(toupper(substring(x, 1, 1)), tolower(substring(x, 2))))
+}
 
-# Increase the maximum size of globals to 1 GB (or a higher value if necessary)
-options(future.globals.maxSize = 1024 * 1024 * 1024)  # 1 GB
-
-# Normalizing the data
-data <- SCTransform(data,                                 # "Data were normalized using scTransform, using the best 5000 features." (Losa et al., 2023)
-                    method = "glmGamPoi",                 # This is the default method
-                    variable.features.n = 5000, 
-                    verbose = TRUE)
-
-
-# Inspect normalized counts for control (D) and nicotine treatment (N)
-data@assays[["SCT"]]@data
-range(data@assays[["SCT"]]@data)
-
-
-### Identification of highly variable features (feature selection)
-data <- FindVariableFeatures(data,              # "Variable expressed genes across the single cells under cutoff with an average expression of more than 0.0125 and less than 3, and dispersion of more than 0.5, were detected for down-stream analysis" (Guo et al., 2019)
-                             selection.method = "vst",          # You can also use "mean.var.plot" or other methods
-                             nfeatures = 5000,                  # Specify the number of features to return
-                             clip.min = 0.0125,                 # Clip min value to 0.0125 for average expression
-                             clip.max = 3,                      # Clip max value to 3 for average expression
-                             dispersion.threshold = 0.2         # Set the minimum dispersion threshold
+# Apply this function to the Seurat predefined cell cycle genes
+cc.genes_corrected <- list(
+  s.genes = sapply(cc.genes$s.genes, capitalize_first_letter),   # S phase genes
+  g2m.genes = sapply(cc.genes$g2m.genes, capitalize_first_letter)  # G2M phase genes
 )
 
+# Perform cell cycle scoring using the corrected gene sets
+so_midface_E9.5 <- CellCycleScoring(so_midface_E9.5,
+                                    s.features = cc.genes_corrected$s.genes,   # S phase genes
+                                    g2m.features = cc.genes_corrected$g2m.genes,  # G2M phase genes
+                                    set.ident = TRUE
+)
+# This adds two new metadata columns, `S.Score` and `G2M.Score`, for each cell indicating its level of expression in the S and G2M phases.
 
-# Create the variable feature plot
-data@assays[["SCT"]]@var.features
-VariableFeaturePlot(data)
-
-# Data scaling, 5000 variable features are used for scaling                     # ScaleData function shifts expression of each gene, such that mean expression across cells for the gene is zero and then scales the expression of each gene so that the variance across all cells is one
-data <- ScaleData(data)                                                         # 5000 identified variable features
-data@assays[["SCT"]]@scale.data
-
-# Alternativelym, one can perform Data scaling with all genes (takes longer time)
-# all.genes <- rownames(data)
-# data <- ScaleData(data, features = all.genes)
-
-# Save Seurat object
-saveRDS(data, file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF_SCT_scaled.RDS")
-
-
-### Perform PCA on the scaled data (linear dimension reduction)
-data <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF_SCT_scaled.RDS")
-
-# Regress out unwanted variables (mitochondrial percentage and number of UMIs)
-data <- ScaleData(data,
-                  vars.to.regress = c("percent.mt", "nCount_RNA"))
-
-# Perform PCA
-data <- RunPCA(data,                                                            # "Cell clusters were identified by constructing a shared nearest neighbor graph followed by a modularity optimization-based clustering algo- rithm (Leiden algorithm106) using the top 60 principal components as determined by PCA." (Losa et al., 2023)
-               npcs = 60,                                                       # Number of principal components to compute
-               features = VariableFeatures(object = data),                      # Use variable features for PCA
-               ndims.print = 1:5,                                               # Print details for the first 5 PCs
-               nfeatures.print = 30                                             # Print details for the top 30 features
+# 3. Regress out cell cycle scores during scaling (regress cell cycle information from the data, so that cell-cycle heterogeneity does not contribute to PCA or downstream analysis)
+so_midface_E9.5 <- ScaleData(so_midface_E9.5,
+                             features = rownames(so_midface_E9.5),
+                             vars.to.regress = c("S.Score", "G2M.Score"),
+                             verbose = TRUE
 )
 
-# Examine and visualize PCA results a few different ways
-# DimPlot(), VizDimReduction() and DimHeatmap
-DimPlot(data, reduction = "pca", dims = c(1,10))
-DimPlot(data, reduction = "pca", dims = c(1,60))
-DimPlot(data, reduction = "pca", dims = c(1,100))
+# PCA
+so_midface_E9.5 <- RunPCA(so_midface_E9.5,
+                          verbose = FALSE, 
+                          npcs = 100,                # Number of principal components to compute
+                          ndims.print = 1:5,         # Print details for the first 5 PCs
+                          nfeatures.print = 30       # Print details for the top 30 features
+)
+pca_dim_sel <- 60                                      # Number of features selection by elbow method
 
+# Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
+p <- ElbowPlot(so_midface_E9.5, ndims = 100)
+out_file <- paste(out_folder, "midface_E9.5.qc.ellbowplot.pdf", sep = "")
+pdf(out_file, width = 5, height = 5)
+plot(p)
+dev.off()
 
-### Determine the 'dimensionalily' of the dataset
+#UMAP
+so_midface_E9.5 <- RunUMAP(so_midface_E9.5, dims = 1:pca_dim_sel)
 
-# With JackStraw Function, runs much slower than ElbowPlot Function
-#data <- JackStraw(data, num.replicate = 100)
-#data <- ScoreJackStraw(data, dims = 1:20)
-#JackStrawPlot(data, dims = 1:20)
-
-# With ElbowPlot Function, more straight forward to use                         # you should include all PCs up to the ellobw shift (?) fo cell clustering, but you always can try to include higher PCs to see how the cell cluster looks like later
-ElbowPlot(data)                                                                 # function uses ndims = 20 as default, since we use npca = 20 above increaseing this above the default is not feasible in this case
-ElbowPlot(data, ndims = 10, reduction = "pca")                 
-
-# Clustering of cells                                                           # Seurat uses graph-based approach to cluster cells
-data <- FindNeighbors(data, dims = 1:60)                                        # "Cell clusters were identified by constructing a shared nearest neighbor graph followed by a modularity optimization-based clustering algorithm (Leiden algorithm) using the top 60 principal components as determined by PCA." (Losa et al., 2023)
-data <- FindClusters(data, resolution = 0.8)                                    # "Clustering was performed at multiple resolutions between 0.2 and 2, and optimal resolution was determined empirically based on the expression of known population markers (resolution = 0.8)." (Losa et al., 2023)
-
-# Run non-linear dimensionality reduction (UMAP/t-SNE)
-data <- RunUMAP(data, dims = 1:60)
-DimPlot(data, reduction = "umap", label = TRUE, repel = TRUE)
-
-#data <- RunTSNE(object = data, dims = 1:20)     # "We ran t-SNE with the same number of PCs and default parameters to visualize the clustering results." (Guo et al., 2019)
-#DimPlot(object = data, reduction = "tsne",label = TRUE, repel = TRUE)
-
-View(data)
+# Clustering of cells (Leiden algorithm)                                        # Seurat uses graph-based approach to cluster cells
+so_midface_E9.5 <- FindNeighbors(so_midface_E9.5, dims = 1:pca_dim_sel)         # "Cell clusters were identified by constructing a shared nearest neighbor graph followed by a modularity optimization-based clustering algorithm (Leiden algorithm) using the top 60 principal components as determined by PCA." (Losa et al., 2023)
+so_midface_E9.5 <- FindClusters(so_midface_E9.5, resolution = 0.8)              # "Clustering was performed at multiple resolutions between 0.2 and 2, and optimal resolution was determined empirically based on the expression of known population markers (resolution = 0.8)." (Losa et al., 2023)
 
 # Save Seurat object
-saveRDS(data, file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF_SWF.RDS")
+saveRDS(so_midface_E9.5, file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/results/so_midface_E9.5.rds")
+
+# Read Seurat object (for post-hoc analysis)
+so_midface_E9.5 <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/results/so_midface_E9.5.rds")
+
+# Markers by cluster
+out_file <- paste(out_folder, "/midface_E9.5.markers.txt", sep = "")
+markers <- FindAllMarkers(so_midface_E9.5, 
+                          min.pct = 0.1, 
+                          logfc.threshold = 0.25, 
+                          test.use = "wilcox")
+markers_tib <- markers %>% as_tibble(rownames = "Symbol") %>% select(-Symbol) %>% select(gene, everything()) %>% mutate(avg_log2FC = round(avg_log2FC, 4))
+write_tsv(markers_tib, file = out_file)
+
+### Visualization
+# UMAP: Visualize the S and G2M scores
+p <- FeaturePlot(so_midface_E9.5, 
+                 features = c("S.Score", "G2M.Score"), 
+                 reduction = "umap")
+out_file <- paste(out_folder, "/midface_E9.5.UMAP.CellCycleRegressed.pdf", sep = "")
+pdf(out_file, width = 15, height = 10)
+plot(p)
+dev.off()
+
+# UMAP plot (clusters)
+p <- DimPlot(object = so_midface_E9.5,
+             reduction = 'umap',
+             group.by = 'seurat_clusters',
+             label = TRUE)
+out_file <- paste(out_folder, "/midface_E9.5.UMAP.clusters.pdf", sep = "")
+pdf(out_file, width = 15, height = 10)
+plot(p)
+dev.off()
+
+# UMAP overlay of goi
+goi <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4",                                           # Pbx1-4
+         "Cdh2", "Vim", "Fn1", "Snai1", "Snai2", "Twist1")                         # midface fate determinants (literature)
+out_file <- paste(out_folder, "/midface_E9.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  p <- FeaturePlot(so_midface_E9.5, gene)
+  plot(p)
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_midface_E9.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(out_folder, "/midface_E9.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# Vioplot (by cluster) of goi
+out_file <- paste(out_folder, "/midface_E9.5.vioplot.goi.pdf", sep = "")
+pdf(out_file, width = 15, height = 10)
+for (gene in goi) {
+  p <- VlnPlot(so_midface_E9.5, 
+               features = gene, 
+               pt.size = 0, 
+               group.by = "seurat_clusters") +
+    stat_summary(fun = median, geom='point', size = 10, colour = "black", shape = 95) +
+    theme(legend.position = 'none')
+  plot(p)
+}
+dev.off()
 
 
-### Visualization as UMAP
+
+############################# ADDITIONAL ANALYSIS ##############################
+
+## Co-expression of Pbx1 and Hand1 (Hand2 not expressed, therefore tested for Hand1)
+# Define a list of gene sets (co-expressed genes)
+gene_set_1 <- list(Coexpression = c("Pbx1",
+                                    "Hand1"))
+
+# Add module scores to the Seurat object
+so_midface_E9.5 <- AddModuleScore(so_midface_E9.5, features = gene_set_1, name = "CoexpressionScore")
+
+# Visualize the Coexpression score in UMAP
+p <- FeaturePlot(so_midface_E9.5, features = "CoexpressionScore1", 
+                 pt.size = 0.5) + 
+  scale_color_gradient2(low = "red", mid = "white", high = "blue", 
+                        midpoint = median(so_midface_E9.5$CoexpressionScore1)) +
+  labs(title = "Co-expression in midface E9.5 (scRNA-seq)", 
+       x = "UMAP 1", 
+       y = "UMAP 2", 
+       color = "Co-expression\n(Pbx1, Hand1)") +  # Custom legend title
+  theme_minimal()
+out_file <- paste(out_folder, "/midface_E9.5.UMAP.Pbx1+Hand1.co-expression.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+plot(p)
+dev.off()
+
+
+## Anti-/correlated expression of Pbx1 and Hand1
+# Step 1: Calculate gene correlation
+# Extract expression data for the two genes
+Pbx1_expr <- FetchData(so_midface_E9.5, vars = "Pbx1")
+Hand1_expr <- FetchData(so_midface_E9.5, vars = "Hand1")
+
+# Calculate the correlation between the two genes
+correlation <- cor(Pbx1_expr, Hand1_expr)
+cat("Correlation between Pbx1 and Hand1: ", correlation, "\n")
+
+## Testing whether the expression of Pbx1 and Hand1 is mutually exclusive 
+# 1. Define gene expression thresholds
+# Extract expression data for Pbx1 and Hand1
+Pbx1_expressed <- Pbx1_expr > 0
+Hand1_expressed <- Hand1_expr > 0
+
+# 2. Identify cells where only one gene is expressed
+# Identify cells where Pbx1 is expressed but Hand1 is not, and vice versa
+mutually_exclusive_Pbx1 <- Pbx1_expressed & !Hand1_expressed
+mutually_exclusive_Hand1 <- Hand1_expressed & !Pbx1_expressed
+both_expressed <- Pbx1_expressed & Hand1_expressed
+
+# Count the number of mutually exclusive cells for each gene
+mutually_exclusive_Pbx1_cells <- sum(mutually_exclusive_Pbx1)
+mutually_exclusive_Hand1_cells <- sum(mutually_exclusive_Hand1)
+
+# Count the number of cells where both genes are expressed
+both_expressed_cells <- sum(both_expressed)
+
+# Print the results
+cat("Number of cells where Pbx1 is expressed but Hand1 is not: ", mutually_exclusive_Pbx1_cells, "\n")
+cat("Number of cells where Hand1 is expressed but Pbx1 is not: ", mutually_exclusive_Hand1_cells, "\n")
+cat("Number of cells where both Pbx1 and Hand1 are expressed: ", both_expressed_cells, "\n")
+
+# 3. Statistical test for mutual exclusivity
+# Create a contingency table for the co-expression of Pbx1 and Hand1
+contingency_table <- table(Pbx1_expressed, Hand1_expressed)
+
+# Perform Fisher's Exact Test (for small numbers) or Chi-square test
+# Fisher's exact test is recommended for small sample sizes (less than 5 in any cell)
+fisher_test_result <- fisher.test(contingency_table)
+
+# Print the p-value from the Fisher's test
+cat("P-value for mutual exclusivity (Fisher's Exact Test): ", fisher_test_result$p.value, "\n")
+
+# 4. Visualizing the results
+# Create a new metadata column to label cells as mutually exclusive for each gene
+so_midface_E9.5$MutualExclusive_Pbx1 <- mutually_exclusive_Pbx1
+so_midface_E9.5$MutualExclusive_Hand1 <- mutually_exclusive_Hand1
+so_midface_E9.5$Both_Expressed <- both_expressed
+
+# Visualize mutual exclusivity of Pbx1 and Hand1 using UMAP
+p <- FeaturePlot(so_midface_E9.5, 
+                 features = c("MutualExclusive_Pbx1", "MutualExclusive_Hand1", "Both_Expressed"))
+out_file <- paste(out_folder, "/midface_E9.5.UMAP.mutual.exclusive.Pbx1_Hand1.pdf", sep = "")
+pdf(out_file, width = 10, height = 7)
+plot(p)
+dev.off()
+
+# Visualize mutual exclusivity with a Venn diagram (with two overlapping circles)
+library(grid)
+library(futile.logger)
+library(VennDiagram)
+
+# Define the output file path for the Venn diagram
+out_file <- paste(out_folder, "/midface_E9.5.VennDiagram.Pbx1+Hand1.pdf", sep = "")
+
+# Open a PDF device to save the plot
+pdf(out_file, width = 10, height = 5)
+
+# Create the Venn diagram with two circles
+venn.plot <- venn.diagram(
+  x = list(
+    "Pbx1" = which(Pbx1_expressed),
+    "Hand1" = which(Hand1_expressed)
+  ),
+  category.names = c("Pbx1", "Hand1"),
+  filename = NULL,  # We are using grid.draw() to plot, so no need for a file name here
+  output = TRUE,
+  lwd = 2,  # Line width of the circles
+  fill = c("red", "blue"),  # Fill color for the circles
+  alpha = c(0.5, 0.5),  # Transparency of the circles
+  cex = 1.5,  # Text size for main title
+  cat.cex = 1.5,  # Category text size
+  cat.pos = 0,  # Category text position (0 is top-center)
+  main = "Venn Diagram of Gene Expression, midface E9.5",  # Main title
+  family = "sans",  # Use a generic sans-serif font (usually Helvetica or Arial)
+  cat.fontface = 1,  # Regular font style for category names
+  fontface = 1  # Regular font style for main title
+)
+
+# Plot the Venn diagram
+grid.draw(venn.plot)
+
+# Close the PDF device to save the plot
+dev.off()
+
+
+########################### EXPLORATORY ANALYSIS (Pbx and Draxin expression)
 
 # Retrieve dataset, pre-analyzed with standard work flow (SWF) from previous steps to visualize batch effects
-data_SWF <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/filtered_feature_bc_matrix/analysis/SeuratObject_scRNA-seq_E9.5_MF_SWF.RDS")
-data_SWF
+so_midface_E9.5 <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/results/so_midface_E9.5.rds")
 
 # UMAP clusters
-DimPlot(data_SWF, reduction = "umap",label = TRUE)
+DimPlot(so_midface_E9.5, reduction = "umap",label = TRUE)
 
 # Pbx1/2 and Draxin expression
-plot <- FeaturePlot(data_SWF, 
+plot <- FeaturePlot(so_midface_E9.5, 
                     features = c("Pbx1", "Pbx2", "Pbx3", "Draxin"),                    
                     cols = c('lightgray', 'blue'),
                     pt.size = 0.01)  # Adjust pt.size to your desired value
@@ -196,7 +352,7 @@ plot <- FeaturePlot(data_SWF,
 plot + plot_annotation(title = "scRNA-seq analysis of murine midface epithelium, E9.5")
 
 # Expression of Pbx1/2, Draxin and epithelial markers
-plot <- FeaturePlot(data_SWF, 
+plot <- FeaturePlot(so_midface_E9.5, 
                     features = c("Pbx1", "Pbx2", "Pbx3", "Draxin", "Cdh1", "Tjp1"),                    
                     cols = c('lightgray', 'blue'),
                     pt.size = 0.01)  # Adjust pt.size to your desired value
@@ -206,7 +362,7 @@ plot + plot_annotation(title = "scRNA-seq of murine midface epithelium, E9.5: ep
 
 
 # Expression of Pbx1/2, Draxin and mesenchymal markers
-plot <- FeaturePlot(data_SWF, 
+plot <- FeaturePlot(so_midface_E9.5, 
                     features = c("Pbx1", "Pbx2", "Pbx3", "Draxin", "Cdh2", "Vim", "Fn1", "Snai1", "Snai2", "Twist1"),                    
                     cols = c('lightgray', 'blue'),
                     pt.size = 0.01)  # Adjust pt.size to your desired value
@@ -219,335 +375,23 @@ gene_set_1 <- list(Coexpression = c("Pbx1",
                                     "Draxin"))
 
 # Add module scores to the Seurat object
-data <- AddModuleScore(data_SWF, features = gene_set_1, name = "CoexpressionScore")
+data <- AddModuleScore(so_midface_E9.5, features = gene_set_1, name = "CoexpressionScore")
 
 # Visualize the module score in UMAP
 FeaturePlot(data, features = "CoexpressionScore1", 
             pt.size = 0.5) + 
   scale_color_gradient2(low = "red", mid = "white", high = "blue", midpoint = median(data$CoexpressionScore1)) +
-  labs(title = "Co-expression in E10.5 hindlimb scRNA-seq", 
+  labs(title = "Co-expression in midface E9.5 (scRNA-seq)", 
        x = "UMAP 1", 
        y = "UMAP 2", 
        color = "Co-expression\n(Pbx1, Draxin)") +  # Custom legend title
   theme_minimal()
 
 # Violin plot showing expression of a given target in all clusters
-VlnPlot(data_SWF, 
+VlnPlot(so_midface_E9.5, 
         features = "Draxin",            # Gene of interest
         group.by = "seurat_clusters", # Group by clusters (default is 'seurat_clusters' if you haven't customized the metadata)
         pt.size = 0.1,                # Adjust point size for individual cells, or set to 0 to hide points
         cols = NULL,                  # Optional: customize colors, NULL uses default palette
         y.max = NULL                  # Optional: limit the Y-axis range
 )
-
-################################################################################
-### scRNA-seq data integration
-# Serves to remove batch effects between different data collections or experimental manipulations.
-DimPlot(data_SWF, reduction = "tsne",label = TRUE, group.by = 'orig.ident')
-
-# Load Seurat object without pre-processing (SWF) for data integration
-data <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/data_subset.RDS")
-view(data@meta.data)
-view(data)
-
-
-### DETOUR (based on ChatGPT)
-# When integrating datasets with different numbers of features (genes) and cells in Seurat, you can follow these steps to prepare and merge your datasets effectively:
-# 1. Identify Common Features: First, identify the common genes between the two datasets. This will ensure that you are integrating only the overlapping features:
-
-# Read Seurat Objects
-dataset1 <- readRDS("/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/D.RDS")
-dataset2 <- readRDS("/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/N.RDS")
-
-# Get the features from both datasets
-features1 <- rownames(dataset1)  # Replace with your actual dataset
-features2 <- rownames(dataset2)  # Replace with your actual dataset
-
-# Find common features
-common_features <- intersect(features1, features2)
-
-# 2. Subset Each Dataset to Common Features
-# Once you have the common features, subset each dataset to keep only these features:
-dataset1_subset <- dataset1[common_features, ]
-dataset2_subset <- dataset2[common_features, ]
-
-# 3. Normalize Each Dataset Independently
-# Normalize each dataset independently to remove any systematic differences:
-library(Seurat)
-
-# Normalize dataset 1
-dataset1_subset <- NormalizeData(dataset1_subset)
-dataset1_subset <- FindVariableFeatures(dataset1_subset, selection.method = 'vst', nfeatures = 2000)
-
-# Normalize dataset 2
-dataset2_subset <- NormalizeData(dataset2_subset)
-dataset2_subset <- FindVariableFeatures(dataset2_subset, selection.method = 'vst', nfeatures = 2000)
-
-# 4. Integrate the Datasets
-# Now that both datasets are normalized and contain the same features, you can proceed with integration. Use the IntegrateData function:
-# Create a list of datasets
-data.list <- list(dataset1_subset, dataset2_subset)
-
-#### DETOUR OVER
-
-# Normalize and identify variable features for each dataset independently
-data.list <- lapply(X = data.list, FUN = function(x) {
-  x <- NormalizeData(x)
-  x <- FindVariableFeatures(x, selection.method = 'vst', nfeatures = 2000)
-})
-
-# Select features that are repeatedly variable across datasets for integration
-features <- SelectIntegrationFeatures(object.list = data.list)
-
-# Find Integration Anchors (will be used to correct the technical difference between the two datasets)
-data.anchors <- FindIntegrationAnchors(object.list = data.list,
-                                       anchor.features = features)
-
-# Perform integration to create an 'integrated' data assay
-data.integrated <- IntegrateData(anchorset = data.anchors)
-
-# Save Seurat object
-saveRDS(data.integrated, "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/merged_ctrl_integrated.RDS")
-
-### Perform an integrated analysis
-DefaultAssay(data.integrated) <- "integrated"
-
-# Run the standard workflow for visualization and clustering
-data.integrated <- ScaleData(data.integrated, verbose = FALSE)
-data.integrated <- RunPCA(data.integrated, npcs = 50, verbose = FALSE)
-data.integrated <- FindNeighbors(data.integrated ,
-                                 reduction = "pca", dims = 1:20)
-data.integrated <- FindClusters(data.integrated, resolution = 0.8)
-data.integrated <- RunTSNE(object = data.integrated, 
-                           reduction = "pca",
-                           dims = 1:20)     # "We ran t-SNE with the same number of PCs and default parameters to visualize the clustering results." (Guo et al., 2019)
-
-# Visualization
-DimPlot(data.integrated, reduction = "tsne",label = TRUE, group.by = 'orig.ident')
-
-# Compare
-plot1 <- DimPlot(data_SWF, reduction = "tsne",label = TRUE, group.by = 'orig.ident')
-plot2 <- DimPlot(data.integrated, reduction = "tsne",label = TRUE, group.by = 'orig.ident')
-plot1+plot2
-
-plot1_features <- FeaturePlot(data_SWF, features = c("ZFHX3", 
-                                                     "PBX1"),                    
-                              cols = c('lightgray', 'blue'))
-
-plot2_features <- FeaturePlot(data.integrated, features = c("ZFHX3", 
-                                                            "PBX1"),                    
-                              cols = c('lightgray', 'blue'))
-
-plot3 <- DimPlot(data.integrated, reduction = "tsne",label = TRUE, group.by = 'orig.ident')
-plot1_features+plot2_features+plot3
-
-# Save Seurat object
-saveRDS(data.integrated, "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/merged_ctrl_integrated.RDS")
-
-############################# FURTHER ANALYSIS/ DETOURS ##############################
-
-
-######################################################################################
-### Clustering and UMAP with ChatGPT
-data <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/data_normalized_scaled.RDS")
-
-# Step 1: Regress out unwanted variables (mitochondrial percentage and number of UMIs)
-data <- ScaleData(data, 
-                  vars.to.regress = c("percent.mt", "nCount_RNA"))
-
-# Step 2: Scale the data (this is done in ScaleData)
-# Step 3: Run PCA
-data <- RunPCA(data,
-               npcs = 50,
-               features = VariableFeatures(object = data),
-               ndims.print = 1:5,
-               nfeatures.print = 30)
-
-# Step 4: Cluster the cells using the top 20 PCs
-data <- FindNeighbors(data, dims = 1:20)
-data <- FindClusters(data, resolution = 0.8)
-
-# Optional: Run UMAP or t-SNE for visualization
-data <- RunUMAP(data, dims = 1:20)
-
-# Print the clustering results
-print(head(data@meta.data))
-
-
-### Create a UMAP Plot
-# Step 1: Ensure you have run the necessary steps before this
-# (e.g., ScaleData, RunPCA, FindNeighbors, FindClusters)
-
-# Step 2: Run UMAP using the top 20 principal components
-data <- RunUMAP(data, dims = 1:20)
-
-# Step 3: Create a UMAP plot, colored by cluster identities
-umap_plot <- DimPlot(data, reduction = "umap", group.by = "ident") +
-  ggtitle("UMAP of scRNA-seq Data") +
-  theme_minimal()
-
-# Display the plot
-print(umap_plot)
-
-#########################################################################################################
-### Retrieve expression levels of a specific gene for all cells in Seurat object without data integration
-library(ggplot2)
-
-# Load normalized dataset
-data <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/data_normalized_scaled.RDS")
-
-# Specify the gene of interest
-gene_of_interest <- "ZFHX3"  # Replace with your gene name
-rownames(data)
-
-# Check available genes
-available_genes <- rownames(data)
-print(gene_of_interest %in% available_genes)
-
-# Extract expression levels for the gene of interest
-gene_expression_levels <- FetchData(data, vars = gene_of_interest)
-
-# Check the fetched expression levels
-print(head(gene_expression_levels))
-
-# Assuming you have a metadata variable for identity
-meta_data <- data@meta.data
-
-# Create the data frame for plotting
-data_for_plot <- data.frame(
-  expression = gene_expression_levels[[gene_of_interest]],  # Ensure this retrieves the correct column
-  identity = meta_data$orig.ident  # Change this to your grouping variable if different
-)
-
-# Filter out cells with zero expression
-data_for_plot <- data_for_plot[data_for_plot$expression > 0, ]
-
-# Check the structure of data_for_plot
-str(data_for_plot)
-
-# Convert identity to a factor
-data_for_plot$identity <- as.factor(data_for_plot$identity)
-
-# Split the data by group
-group1 <- data_for_plot$expression[data_for_plot$identity == "D"]  # Replace with your actual group names
-group2 <- data_for_plot$expression[data_for_plot$identity == "N"]
-
-# Perform the t-test
-t_test_result <- t.test(group1, group2)
-
-# Extract the p-value
-p_value <- t_test_result$p.value
-
-# Create the boxplot
-boxplot <- ggplot(data_for_plot, aes(x = identity, y = expression)) +
-  geom_boxplot() +
-  theme_minimal() +
-  labs(title = paste("Expression of", gene_of_interest),
-       y = "Expression Level [AU], normalized",
-       x = "Treatment Group") +
-  scale_x_discrete(labels = c("D" = "Control", "N" = "Nicotine")) +  # Replace D and N with Control and Nicotine
-  # Increase label size and place inside the plot
-  geom_text(aes(x = 1.5, y = median(expression, na.rm = TRUE),  # Centered between the groups
-                label = paste("p-value =", format(p_value, digits = 2))), 
-            size = 4,  # Adjust size to match axis labels
-            vjust = -2,  # Center vertically
-            hjust = 0.5)  # Center horizontally
-
-# Display the plot
-print(boxplot)
-
-#########################################################################################################
-### Retrieve expression levels of a specific gene for all cells in Seurat object using integrated Seurat object
-library(ggplot2)
-
-# Load normalized dataset
-data.integrated <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_nicotine-treated_EB/analysis/merged_ctrl_integrated.RDS")
-
-# Specify the gene of interest
-gene_of_interest <- "RELN"  # Replace with your gene name
-rownames(data.integrated)
-
-# Check available genes
-available_genes <- rownames(data.integrated)
-print(gene_of_interest %in% available_genes)
-
-# Extract expression levels for the gene of interest
-gene_expression_levels <- FetchData(data.integrated, vars = gene_of_interest)
-
-# Check the fetched expression levels
-print(head(gene_expression_levels))
-
-# Assuming you have a metadata variable for identity
-meta_data <- data.integrated@meta.data
-
-# Create the data frame for plotting
-data_for_plot <- data.frame(
-  expression = gene_expression_levels[[gene_of_interest]],  # Ensure this retrieves the correct column
-  identity = meta_data$orig.ident  # Change this to your grouping variable if different
-)
-
-# Filter out cells with zero expression
-#data_for_plot <- data_for_plot[data_for_plot$expression > 0, ]
-
-# Check the structure of data_for_plot
-str(data_for_plot)
-
-# Convert identity to a factor
-data_for_plot$identity <- as.factor(data_for_plot$identity)
-
-# Split the data by group
-group1 <- data_for_plot$expression[data_for_plot$identity == "D"]  # Replace with your actual group names
-group2 <- data_for_plot$expression[data_for_plot$identity == "N"]
-
-# Perform the t-test
-t_test_result <- t.test(group1, group2)
-
-# Extract the p-value
-p_value <- t_test_result$p.value
-
-# Create the boxplot
-boxplot <- ggplot(data_for_plot, aes(x = identity, y = expression)) +
-  geom_boxplot() +
-  theme_minimal() +
-  labs(title = paste("Expression of", gene_of_interest),
-       y = "Expression Level [AU], normalized",
-       x = "Treatment Group") +
-  scale_x_discrete(labels = c("D" = "Control", "N" = "Nicotine")) +  # Replace D and N with Control and Nicotine
-  # Increase label size and place inside the plot
-  geom_text(aes(x = 1.5, y = median(expression, na.rm = TRUE),  # Centered between the groups
-                label = paste("p-value =", format(p_value, digits = 2))), 
-            size = 4,  # Adjust size to match axis labels
-            vjust = -2,  # Center vertically
-            hjust = 0.5)  # Center horizontally
-
-# Display the plot
-print(boxplot)
-
-#########################################################################################################
-## Setup of Seurat
-
-# Enter commands in R (or R studio, if installed)
-install.packages('Seurat')
-
-# Load packages developed by other labs that can substantially enhance speed 
-# and performance
-setRepositories(ind = 1:3, addURLs = c('https://satijalab.r-universe.dev', 
-                                       'https://bnprks.r-universe.dev/'))
-install.packages(c("BPCells", "presto", "glmGamPoi"))
-
-# We also recommend installing these additional packages, which are used in our 
-# vignettes, and enhance the functionality of Seurat:
-
-# Signac: analysis of single-cell chromatin data
-# SeuratData: automatically load datasets pre-packaged as Seurat objects
-# Azimuth: local annotation of scRNA-seq and scATAC-seq queries across multiple organs and tissues
-# SeuratWrappers: enables use of additional integration and differential expression methods
-
-# Install the remotes package
-if (!requireNamespace("remotes", quietly = TRUE)) {
-  install.packages("remotes")
-}
-install.packages('Signac')
-remotes::install_github("satijalab/seurat-data", quiet = TRUE)
-remotes::install_github("satijalab/azimuth", quiet = TRUE)
-remotes::install_github("satijalab/seurat-wrappers", quiet = TRUE)
