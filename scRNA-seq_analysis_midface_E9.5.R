@@ -64,7 +64,7 @@ so_midface_E9.5 <- subset(so_midface_E9.5,
 p <- RidgePlot(so_midface_E9.5,
                features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
                ncol = 1, log = TRUE)
-out_file <- paste(out_folder, "midface_E9.5.data.qc.filtered.pdf", sep = "")
+out_file <- paste(out_folder, "midface_E9.5.qc.filtered.pdf", sep = "")
 pdf(out_file, width = 4, height = 4)
 plot(p)
 dev.off()
@@ -334,7 +334,7 @@ grid.draw(venn.plot)
 dev.off()
 
 
-########################### EXPLORATORY ANALYSIS (Pbx and Draxin expression)
+########################### OLD EXPLORATORY ANALYSIS (Pbx and Draxin expression)
 
 # Retrieve dataset, pre-analyzed with standard work flow (SWF) from previous steps to visualize batch effects
 so_midface_E9.5 <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF-E9.5_ML11_071719/results/so_midface_E9.5.rds")
