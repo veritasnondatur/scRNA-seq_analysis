@@ -334,3 +334,139 @@ grid.draw(venn.plot)
 
 # Close the PDF device to save the plot
 dev.off()
+
+
+##### Co-expression of multiple factors
+### 1. Co-expression of all genes
+# Define a list of gene sets (co-expressed genes)
+gene_set_all <- list(Coexpression = c("Pbx1", "Pbx2", "Hand1", "Hand2", "Tcf3", "Tcf4", "Tcf12"))
+
+# Add module scores to the Seurat object for the entire set
+so_hindlimb_E10.5 <- AddModuleScore(so_hindlimb_E10.5, 
+                                    features = gene_set_all, 
+                                    name = "CoexpressionScore")
+
+# Visualize the Coexpression score in UMAP for the entire gene set
+p <- FeaturePlot(so_hindlimb_E10.5, features = "CoexpressionScore1", 
+                 pt.size = 0.5) + 
+  scale_color_gradient2(low = "red", mid = "white", high = "blue", 
+                        midpoint = median(so_hindlimb_E10.5$CoexpressionScore1)) +
+  labs(title = "Co-expression in hindlimb E10.5 (scRNA-seq)", 
+       x = "UMAP 1", 
+       y = "UMAP 2", 
+       color = "Co-expression\n(Pbx1, Pbx2, Hand1, Hand2, Tcf3, Tcf4, Tcf12)") +  # Updated legend title
+  theme_minimal()
+
+out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.Coexpression_Pbx1+2_Hand1+2_Tcf3+4+12.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+plot(p)
+dev.off()
+
+### 2. Calculate Correlation Between All Genes
+# Extract expression data for all genes of interest
+genes_of_interest <- c("Pbx1", "Pbx2", "Hand1", "Hand2", "Tcf3", "Tcf4", "Tcf12")
+expression_data <- FetchData(so_hindlimb_E10.5, vars = genes_of_interest)
+
+# Calculate pairwise correlations
+cor_matrix <- cor(expression_data)
+print("Correlation matrix:")
+print(cor_matrix)
+
+
+### Testing Mutual Exclusivity for All Genes
+# Define expression threshold (e.g., expressed if > 0)
+expression_threshold <- 0
+
+# Initialize a list to store mutual exclusivity results
+mutually_exclusive_results <- list()
+
+# Loop through all pairs of genes
+for (i in 1:length(genes_of_interest)) {
+  for (j in (i+1):length(genes_of_interest)) {
+    gene1 <- genes_of_interest[i]
+    gene2 <- genes_of_interest[j]
+    
+    # Extract expression data for the pair of genes
+    gene1_expr <- FetchData(so_hindlimb_E10.5, vars = gene1)
+    gene2_expr <- FetchData(so_hindlimb_E10.5, vars = gene2)
+    
+    # Define expression (0 or 1, based on threshold)
+    gene1_expressed <- gene1_expr > expression_threshold
+    gene2_expressed <- gene2_expr > expression_threshold
+    
+    # Calculate mutual exclusivity
+    mutually_exclusive_gene1 <- gene1_expressed & !gene2_expressed
+    mutually_exclusive_gene2 <- gene2_expressed & !gene1_expressed
+    both_expressed <- gene1_expressed & gene2_expressed
+    
+    # Store results
+    mutually_exclusive_results[[paste(gene1, gene2, sep = "_")]] <- list(
+      mutually_exclusive_gene1 = sum(mutually_exclusive_gene1),
+      mutually_exclusive_gene2 = sum(mutually_exclusive_gene2),
+      both_expressed = sum(both_expressed)
+    )
+    
+    # Create a contingency table for the pair
+    contingency_table <- table(gene1_expressed, gene2_expressed)
+    
+    # Perform Fisher's exact test
+    fisher_test_result <- fisher.test(contingency_table)
+    
+    # Print the p-value for mutual exclusivity
+    cat("P-value for mutual exclusivity between", gene1, "and", gene2, ": ", fisher_test_result$p.value, "\n")
+  }
+}
+
+# Print the results for mutual exclusivity
+print(mutually_exclusive_results)
+
+
+### Visualization of Mutual Exclusivity for All Pairs
+# Loop through and plot mutual exclusivity for all gene pairs
+for (i in 1:length(genes_of_interest)) {
+  for (j in (i+1):length(genes_of_interest)) {
+    gene1 <- genes_of_interest[i]
+    gene2 <- genes_of_interest[j]
+    
+    # Create new metadata columns for mutual exclusivity
+    so_hindlimb_E10.5[[paste("MutualExclusive_", gene1, gene2, sep = "")]] <- 
+      (FetchData(so_hindlimb_E10.5, vars = gene1) > expression_threshold) & 
+      !(FetchData(so_hindlimb_E10.5, vars = gene2) > expression_threshold)
+    
+    # Visualize mutual exclusivity using UMAP
+    p <- FeaturePlot(so_hindlimb_E10.5, features = paste("MutualExclusive_", gene1, gene2, sep = ""))
+    out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.mutual.exclusive_", gene1, "_", gene2, ".pdf", sep = "")
+    pdf(out_file, width = 7, height = 5)
+    plot(p)
+    dev.off()
+  }
+}
+
+
+### Venn Diagrams for Pairwise Gene Expression
+# Create a Venn diagram for each gene pair
+for (i in 1:length(genes_of_interest)) {
+  for (j in (i+1):length(genes_of_interest)) {
+    gene1 <- genes_of_interest[i]
+    gene2 <- genes_of_interest[j]
+    
+    # Define the output file for the Venn diagram
+    out_file <- paste(out_folder, "/hindlimb_E10.5.VennDiagram.Coexpression_", gene1, "_", gene2, ".pdf", sep = "")
+    
+    # Create the Venn diagram for the pair of genes
+    venn.plot <- venn.diagram(
+      x = list(
+        gene1 = which(FetchData(so_hindlimb_E10.5, vars = gene1) > expression_threshold),
+        gene2 = which(FetchData(so_hindlimb_E10.5, vars = gene2) > expression_threshold)
+      ),
+      category.names = c(gene1, gene2),
+      filename = NULL,  # Plot it without saving to a file
+      output = TRUE
+    )
+    
+    # Save the plot to the specified file
+    pdf(out_file, width = 10, height = 5)
+    grid.draw(venn.plot)
+    dev.off()
+  }
+}
