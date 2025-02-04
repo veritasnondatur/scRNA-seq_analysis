@@ -214,6 +214,11 @@ dev.off()
 
 ############################# ADDITIONAL ANALYSIS ##############################
 
+# Load necessary data / set paths
+so_hindlimb_E10.5 <- readRDS(file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_E10.5_hindlimb/results/so_hindlimb_E10.5.rds")
+out_folder <- "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_E10.5_hindlimb/results/"
+
+
 ## Co-expression of Pbx1 and Hand2
 # Define a list of gene sets (co-expressed genes)
 gene_set_1 <- list(Coexpression = c("Pbx1",
