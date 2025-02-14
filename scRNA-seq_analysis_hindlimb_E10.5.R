@@ -341,7 +341,176 @@ grid.draw(venn.plot)
 dev.off()
 
 
-## Anti-/correlated expression of Pbx1 and Tcf3
+
+## Co-expression of Pbx2 and Hand2
+# Define a list of gene sets (co-expressed genes)
+gene_set_1 <- list(Coexpression = c("Pbx2",
+                                    "Hand2"))
+
+# Add module scores to the Seurat object
+so_hindlimb_E10.5 <- AddModuleScore(so_hindlimb_E10.5, features = gene_set_1, name = "CoexpressionScore")
+
+# Visualize the Coexpression score in UMAP
+p <- FeaturePlot(so_hindlimb_E10.5, features = "CoexpressionScore1", 
+                 pt.size = 0.5) + 
+  scale_color_gradient2(low = "red", mid = "white", high = "blue", 
+                        midpoint = median(so_hindlimb_E10.5$CoexpressionScore1)) +
+  labs(title = "Co-expression in hindlimb E10.5 (scRNA-seq)", 
+       x = "UMAP 1", 
+       y = "UMAP 2", 
+       color = "Co-expression\n(Pbx2, Hand2)") +  # Custom legend title
+  theme_minimal()
+out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.Pbx2+Hand2.co-expression.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+plot(p)
+dev.off()
+
+## Anti-/correlated expression of Pbx2 and Hand2
+# Step 1: Calculate gene correlation
+# Extract expression data for the two genes
+Pbx2_expr <- FetchData(so_hindlimb_E10.5, vars = "Pbx2")
+Hand2_expr <- FetchData(so_hindlimb_E10.5, vars = "Hand2")
+
+# Calculate the correlation between the two genes
+correlation <- cor(Pbx2_expr, Hand2_expr)
+cat("Correlation between Pbx2 and Hand2: ", correlation, "\n")
+
+## Testing whether the expression of Pbx2 and Hand2 is mutually exclusive 
+# 1. Define gene expression thresholds
+# Extract expression data for Pbx2 and Hand2
+Pbx2_expressed <- Pbx2_expr > 0
+Hand2_expressed <- Hand2_expr > 0
+
+# 2. Identify cells where only one gene is expressed
+# Identify cells where Pbx2 is expressed but Hand2 is not, and vice versa
+mutually_exclusive_Pbx2 <- Pbx2_expressed & !Hand2_expressed
+mutually_exclusive_Hand2 <- Hand2_expressed & !Pbx2_expressed
+both_expressed <- Pbx2_expressed & Hand2_expressed
+
+# Count the number of mutually exclusive cells for each gene
+mutually_exclusive_Pbx2_cells <- sum(mutually_exclusive_Pbx2)
+mutually_exclusive_Hand2_cells <- sum(mutually_exclusive_Hand2)
+
+# Count the number of cells where both genes are expressed
+both_expressed_cells <- sum(both_expressed)
+
+# Print the results
+cat("Number of cells where Pbx2 is expressed but Hand2 is not: ", mutually_exclusive_Pbx2_cells, "\n")
+cat("Number of cells where Hand2 is expressed but Pbx2 is not: ", mutually_exclusive_Hand2_cells, "\n")
+cat("Number of cells where both Pbx2 and Hand2 are expressed: ", both_expressed_cells, "\n")
+
+# 3. Statistical test for mutual exclusivity
+# Create a contingency table for the co-expression of Pbx2 and Hand2
+contingency_table <- table(Pbx2_expressed, Hand2_expressed)
+
+# Perform Fisher's Exact Test (for small numbers) or Chi-square test
+# Fisher's exact test is recommended for small sample sizes (less than 5 in any cell)
+fisher_test_result <- fisher.test(contingency_table)
+
+# Print the p-value from the Fisher's test
+cat("P-value for mutual exclusivity (Fisher's Exact Test): ", fisher_test_result$p.value, "\n")
+
+# 4. Visualizing the results
+# Create a new metadata column to label cells as mutually exclusive for each gene
+so_hindlimb_E10.5$MutualExclusive_Pbx2 <- mutually_exclusive_Pbx2
+so_hindlimb_E10.5$MutualExclusive_Hand2 <- mutually_exclusive_Hand2
+so_hindlimb_E10.5$Both_Expressed <- both_expressed
+
+# Visualize mutual exclusivity of Pbx2 and Hand2 using UMAP
+p <- FeaturePlot(so_hindlimb_E10.5, 
+                 features = c("MutualExclusive_Pbx2", "MutualExclusive_Hand2", "Both_Expressed"))
+out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.mutual.exclusive.Pbx2_Hand2.pdf", sep = "")
+pdf(out_file, width = 10, height = 7)
+plot(p)
+dev.off()
+
+
+## Co-expression of Pbx3 and Hand2
+# Define a list of gene sets (co-expressed genes)
+gene_set_1 <- list(Coexpression = c("Pbx3",
+                                    "Hand2"))
+
+# Add module scores to the Seurat object
+so_hindlimb_E10.5 <- AddModuleScore(so_hindlimb_E10.5, features = gene_set_1, name = "CoexpressionScore")
+
+# Visualize the Coexpression score in UMAP
+p <- FeaturePlot(so_hindlimb_E10.5, features = "CoexpressionScore1", 
+                 pt.size = 0.5) + 
+  scale_color_gradient2(low = "red", mid = "white", high = "blue", 
+                        midpoint = median(so_hindlimb_E10.5$CoexpressionScore1)) +
+  labs(title = "Co-expression in hindlimb E10.5 (scRNA-seq)", 
+       x = "UMAP 1", 
+       y = "UMAP 2", 
+       color = "Co-expression\n(Pbx3, Hand2)") +  # Custom legend title
+  theme_minimal()
+out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.Pbx3+Hand2.co-expression.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+plot(p)
+dev.off()
+
+
+## Anti-/correlated expression of Pbx3 and Hand2
+# Step 1: Calculate gene correlation
+# Extract expression data for the two genes
+Pbx3_expr <- FetchData(so_hindlimb_E10.5, vars = "Pbx3")
+Hand2_expr <- FetchData(so_hindlimb_E10.5, vars = "Hand2")
+
+# Calculate the correlation between the two genes
+correlation <- cor(Pbx3_expr, Hand2_expr)
+cat("Correlation between Pbx3 and Hand2: ", correlation, "\n")
+
+## Testing whether the expression of Pbx3 and Hand2 is mutually exclusive 
+# 1. Define gene expression thresholds
+# Extract expression data for Pbx3 and Hand2
+Pbx3_expressed <- Pbx3_expr > 0
+Hand2_expressed <- Hand2_expr > 0
+
+# 2. Identify cells where only one gene is expressed
+# Identify cells where Pbx3 is expressed but Hand2 is not, and vice versa
+mutually_exclusive_Pbx3 <- Pbx3_expressed & !Hand2_expressed
+mutually_exclusive_Hand2 <- Hand2_expressed & !Pbx3_expressed
+both_expressed <- Pbx3_expressed & Hand2_expressed
+
+# Count the number of mutually exclusive cells for each gene
+mutually_exclusive_Pbx3_cells <- sum(mutually_exclusive_Pbx3)
+mutually_exclusive_Hand2_cells <- sum(mutually_exclusive_Hand2)
+
+# Count the number of cells where both genes are expressed
+both_expressed_cells <- sum(both_expressed)
+
+# Print the results
+cat("Number of cells where Pbx3 is expressed but Hand2 is not: ", mutually_exclusive_Pbx3_cells, "\n")
+cat("Number of cells where Hand2 is expressed but Pbx3 is not: ", mutually_exclusive_Hand2_cells, "\n")
+cat("Number of cells where both Pbx3 and Hand2 are expressed: ", both_expressed_cells, "\n")
+
+# 3. Statistical test for mutual exclusivity
+# Create a contingency table for the co-expression of Pbx3 and Hand2
+contingency_table <- table(Pbx3_expressed, Hand2_expressed)
+
+# Perform Fisher's Exact Test (for small numbers) or Chi-square test
+# Fisher's exact test is recommended for small sample sizes (less than 5 in any cell)
+fisher_test_result <- fisher.test(contingency_table)
+
+# Print the p-value from the Fisher's test
+cat("P-value for mutual exclusivity (Fisher's Exact Test): ", fisher_test_result$p.value, "\n")
+
+# 4. Visualizing the results
+# Create a new metadata column to label cells as mutually exclusive for each gene
+so_hindlimb_E10.5$MutualExclusive_Pbx3 <- mutually_exclusive_Pbx3
+so_hindlimb_E10.5$MutualExclusive_Hand2 <- mutually_exclusive_Hand2
+so_hindlimb_E10.5$Both_Expressed <- both_expressed
+
+# Visualize mutual exclusivity of Pbx3 and Hand2 using UMAP
+p <- FeaturePlot(so_hindlimb_E10.5, 
+                 features = c("MutualExclusive_Pbx3", "MutualExclusive_Hand2", "Both_Expressed"))
+out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.mutual.exclusive.Pbx3_Hand2.pdf", sep = "")
+pdf(out_file, width = 10, height = 7)
+plot(p)
+dev.off()
+
+
+
+## Anti-/correlated expression of Pbx3 and Tcf3
 # Step 1: Calculate gene correlation
 # Extract expression data for the two genes
 Pbx1_expr <- FetchData(so_hindlimb_E10.5, vars = "Pbx1")
