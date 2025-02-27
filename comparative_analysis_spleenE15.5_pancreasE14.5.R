@@ -1391,8 +1391,12 @@ DefaultAssay(so_pancreasE14.5) <- "SCT"
 pryr::mem_used()
 
 # Identify variable features for both datasets
-so_spleenE15.5 <- FindVariableFeatures(so_spleenE15.5, selection.method = "vst", nfeatures = 2000)
-so_pancreasE14.5 <- FindVariableFeatures(so_pancreasE14.5, selection.method = "vst", nfeatures = 2000)
+so_spleenE15.5 <- FindVariableFeatures(so_spleenE15.5, 
+                                       selection.method = "vst", 
+                                       nfeatures = 2000)
+so_pancreasE14.5 <- FindVariableFeatures(so_pancreasE14.5, 
+                                         selection.method = "vst", 
+                                         nfeatures = 2000)
 
 # Select integration features
 SelectIntegrationFeatures(object.list = list(so_spleenE15.5, so_pancreasE14.5),
@@ -1440,14 +1444,9 @@ so_spleenE15.5_pancreasE14.5_integrated <- RunPCA(so_spleenE15.5_pancreasE14.5_i
 
 # Perform UMAP on integrated data
 so_spleenE15.5_pancreasE14.5_integrated <- RunUMAP(so_spleenE15.5_pancreasE14.5_integrated, 
-                                        dims = 1:14, 
+                                        dims = 1:13, 
                                         reduction = "pca", 
                                         reduction.name = "umap.integrated")
-
-# Rename the datasets directly in the add.cell.ids argument
-so_spleenE15.5 <- merge(so_spleenE15.5, y = so_pancreasE14.5,
-                                      add.cell.ids = c("spleenE15.5", "pancreasE14.5"),
-                                      project = "spleenE15.5_pancreasE14.5_merged")
 
 # Change the 'orig.ident' metadata of E15.5 spleen (to match name)
 so_spleenE15.5_pancreasE14.5_integrated$orig.ident <- gsub("^MR4", "spleen_E15.5", so_spleenE15.5_pancreasE14.5_integrated$orig.ident)
@@ -1471,7 +1470,7 @@ DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
 
 # Visualize as FeaturePlot
 FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Robo2",
+            features = "Tlx1",
             reduction = "umap.integrated",
             split.by = "orig.ident")
 
@@ -1509,6 +1508,29 @@ for (gene in goi) {
 
 dev.off()
 
+# Visualize marker genes as FeaturePlot
+goi <- c("Tlx1", "Barx1", "Pdx1", "Hoxa2", "Cpa1", "Epcam", "Upk3b", "Nkx2-5", 
+         "Lum", "Col6a2", "Cdkn1c", "Cdk1")
+outFile <- paste(output_folder,
+                 "/int_appr3.UMAP.spleenE15.5_pancreasE14.5_integrated.goi-markers.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 12, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_spleenE15.5_pancreasE14.5_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
 
 ############## Test for mutual exclusivity of candidate expression #############
 
@@ -1863,6 +1885,138 @@ venn.plot <- venn.diagram(
   cat.pos = c(0, 180),  # Place the categories on opposite sides (180 degrees apart)
   cat.dist = c(0.05, 0.05)  # Adjust distance of the category labels from the circles
   
+)
+
+# Draw the Venn diagram
+grid.draw(venn.plot)
+
+# Close the PDF device
+dev.off()
+
+
+##### Comparative analysis of additional genes 
+## Nr2f2, Tlx1, Barx1
+
+# Load libraries
+library(Seurat)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(reticulate)
+
+# Load Seurat object
+so_spleenE15.5_pancreasE14.5_integrated <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/comparative_analysis_spleen+pancreas/integrated_analysis_spleen+pancreas/int_appr3.so_spleenE15.5_pancreasE14.5_integrated.rds")
+
+# Define output folder (for results)
+output_folder <- "~/Documents/postdoc/collaboration/Maurizio/comparative_analysis_spleen+pancreas/integrated_analysis_spleen+pancreas/"
+
+## Is Tlx1 co-expressed or inversely correlated with Nr2f2
+# 1. Define gene expression thresholds
+# Extract expression data for Tlx1 and Nr2f2
+Tlx1_expr <- FetchData(so_spleenE15.5_pancreasE14.5_integrated, vars = "Tlx1")
+Nr2f2_expr <- FetchData(so_spleenE15.5_pancreasE14.5_integrated, vars = "Nr2f2")
+
+# Define a threshold for expression (e.g., greater than 0 means expressed)
+Tlx1_expressed <- Tlx1_expr > 0
+Nr2f2_expressed <- Nr2f2_expr > 0
+
+# 2. Identify cells where only one gene is expressed
+# Identify cells where Tlx1 is expressed but Nr2f2 is not, and vice versa
+mutually_exclusive_Tlx1 <- Tlx1_expressed & !Nr2f2_expressed
+mutually_exclusive_Nr2f2 <- Nr2f2_expressed & !Tlx1_expressed
+both_expressed <- Tlx1_expressed & Nr2f2_expressed
+
+# Count the number of mutually exclusive cells for each gene
+mutually_exclusive_Tlx1_cells <- sum(mutually_exclusive_Tlx1)
+mutually_exclusive_Nr2f2_cells <- sum(mutually_exclusive_Nr2f2)
+both_expressed_cells <- sum(both_expressed)
+
+# Print the results
+cat("Number of cells where Tlx1 is expressed but Nr2f2 is not: ", mutually_exclusive_Tlx1_cells, "\n")
+cat("Number of cells where Nr2f2 is expressed but Tlx1 is not: ", mutually_exclusive_Nr2f2_cells, "\n")
+cat("Number of cells where both Tlx1 and Nr2f2 are expressed: ", both_expressed_cells, "\n")
+
+# 3. Statistical test for mutual exclusivity
+# Create a contingency table for the co-expression of Tlx1 and Nr2f2
+contingency_table <- table(Tlx1_expressed, Nr2f2_expressed)
+
+# Perform Fisher's Exact Test (for small numbers) or Chi-square test
+# Fisher's exact test is recommended for small sample sizes (less than 5 in any cell)
+fisher_test_result <- fisher.test(contingency_table)
+
+# Print the p-value from the Fisher's test
+cat("P-value for mutual exclusivity (Fisher's Exact Test): ", fisher_test_result$p.value, "\n")
+
+# 4. Visualizing the results
+# Create a new metadata column to label cells as mutually exclusive for each gene
+so_spleenE15.5_pancreasE14.5_integrated$MutualExclusive_Tlx1 <- mutually_exclusive_Tlx1
+so_spleenE15.5_pancreasE14.5_integrated$MutualExclusive_Nr2f2 <- mutually_exclusive_Nr2f2
+so_spleenE15.5_pancreasE14.5_integrated$Both_Expressed <- both_expressed
+
+# Generate individual FeaturePlots for each feature
+p1 <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
+                  features = "MutualExclusive_Tlx1", 
+                  reduction = "umap.integrated",
+                  split.by = "orig.ident")
+p2 <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
+                  features = "MutualExclusive_Nr2f2", 
+                  reduction = "umap.integrated",
+                  split.by = "orig.ident")
+p3 <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
+                  features = "Both_Expressed", 
+                  reduction = "umap.integrated",
+                  split.by = "orig.ident")
+
+# Save each plot separately
+# Output for Tlx1 expression
+outFile_Tlx1 <- paste(output_folder, "/int_appr3.UMAP.MutualExclusive_Tlx1(noNr2f2).pdf", sep = "")
+pdf(outFile_Tlx1, width = 10, height = 5)  # Adjust the height/width for your preference
+print(p1)  # Print the first plot
+dev.off()
+
+# Output for Nr2f2 expression
+outFile_Nr2f2 <- paste(output_folder, "/int_appr3.UMAP.MutualExclusive_Nr2f2(noTlx1).pdf", sep = "")
+pdf(outFile_Nr2f2, width = 10, height = 5)  # Adjust the height/width for your preference
+print(p2)  # Print the second plot
+dev.off()
+
+# Output for Both Tlx1 and Nr2f2 expression
+outFile_Both <- paste(output_folder, "/int_appr3.UMAP.Both_Expressed(Tlx1+Nr2f2).pdf", sep = "")
+pdf(outFile_Both, width = 10, height = 5)  # Adjust the height/width for your preference
+print(p3)  # Print the third plot
+dev.off()
+
+# Visualize mutual exclusivity with a Venn diagram (with two overlapping circles)
+library(grid)
+library(futile.logger)
+library(VennDiagram)
+
+# Define the output file path for the Venn diagram
+outFile_venn <- paste(output_folder, "/int_appr3.VennDiagram.MutualExclusiveExpression_Tlx1+Nr2f2.pdf", sep = "")
+
+# Open a PDF device to save the plot
+pdf(outFile_venn, width = 10, height = 5)
+
+# Create the Venn diagram with two circles
+venn.plot <- venn.diagram(
+  x = list(
+    "Tlx1 expressed" = which(Tlx1_expressed),
+    "Nr2f2 expressed" = which(Nr2f2_expressed)
+  ),
+  category.names = c("Tlx1", "Nr2f2"),
+  filename = NULL,  # Output as an object
+  fill = c("red", "blue"),
+  alpha = 0.5,
+  cex = 1.5,
+  fontface = "bold",
+  fontfamily = "sans",
+  cat.cex = 1.5,
+  cat.fontface = "bold",
+  cat.fontfamily = "sans",
+  
+  # Center the category names and adjust positioning
+  cat.pos = c(0, 180),  # Place the categories on opposite sides (180 degrees apart)
+  cat.dist = c(0.05, 0.05)  # Adjust distance of the category labels from the circles
 )
 
 # Draw the Venn diagram
