@@ -1,4 +1,4 @@
-##### Comparative analysis of integrated pancreas_E14.5 and spleen_E15.5 datasets
+#### Comparative analysis of integrated pancreas_E14.5 and spleen_E15.5 datasets
 
 # Load libraries
 library(Seurat)
@@ -7,11 +7,14 @@ library(ggplot2)
 library(patchwork)
 library(reticulate)
 
-# Load Seurat object
-so_spleenE15.5_pancreasE14.5_integrated_old <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/comparative_analysis_spleen+pancreas/integrated_analysis_spleen+pancreas/int_appr3.so_spleenE15.5_pancreasE14.5_integrated.rds")
-
 # Define output folder (for results)
 output_folder <- "~/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/"
+
+################################################################################
+## Visualize integrated dataset with high resolution for clusteridentification
+
+# Load Seurat object
+so_spleenE15.5_pancreasE14.5_integrated_old <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/comparative_analysis_spleen+pancreas/integrated_analysis_spleen+pancreas/int_appr3.so_spleenE15.5_pancreasE14.5_integrated.rds")
 
 # Set the active assay to SCT (to plot normalized expression)
 DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated_old) <- "SCT"
@@ -43,6 +46,7 @@ for (gene in goi) {
 dev.off()
 
 
+################################################################################
 ######### Re-analysis of spleen_E15.5 dataset with different resolution ########
 
 # Increase the maximum global size to 2 GB (2 * 1024^3 bytes)
@@ -199,7 +203,8 @@ so_path_spleenE15.5 <- paste(output_folder, "so_spleenE15.5.rds", sep = "")
 saveRDS(so_spleenE15.5_filtered_norm, file = so_path_spleenE15.5)
 
 
-######### Re-analysis of pancreas_E14.5 dataset with different resolution ########
+################################################################################
+######## Re-analysis of pancreas_E14.5 dataset with different resolution #######
 
 # Load pancreas data (WT only)
 d_pancreasE14.5 <- Read10X(data.dir ="/Users/veralaub/Documents/postdoc/collaboration/Maurizio/Fgf9null_datasets/scRNA-seq/pancreas_Fgf9null/E14.5_pancreas_Fgf9WT_GSM6434043/")
@@ -352,8 +357,8 @@ so_path_pancreasE14.5 <- paste(output_folder, "so_pancreasE14.5.rds", sep = "")
 saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
 
 
-
-############################# Data integration #################################
+################################################################################
+###################### Merge datasets (no integration) #########################
 # Increase the maximum global size to 32 GB (2 * 1024^3 bytes)
 options(future.globals.maxSize = 32 * 1024 * 1024 * 1024)
 
@@ -442,9 +447,14 @@ plot(p)
 dev.off()
 
 
-
+################################################################################
 ######################## INTEGRATION OF THE TWO DATASETS #######################
-### CURRENTLY DOES NOT WORK!
+
+# Load raw data (pre-processed Seurat objects produced above)
+so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5.rds")
+
+so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5.rds")
+
 # Change the default assay to "SCT"
 DefaultAssay(so_spleenE15.5) <- "SCT"
 DefaultAssay(so_pancreasE14.5) <- "SCT"
@@ -470,10 +480,14 @@ var_features_spleen <- so_spleenE15.5@assays[["SCT"]]@var.features
 var_features_pancreas <- so_pancreasE14.5@assays[["SCT"]]@var.features
 
 # Save Seurat objects (interim step to retrieve later [necessary due to Memory capacity error])
-outFile <- paste(output_folder, "so_spleenE15.5_int_appr3.rds", sep = "")
+outFile <- paste(output_folder, "so_spleenE15.5_integrationWIP.rds", sep = "")
 saveRDS(so_spleenE15.5, file = outFile)
-outFile <- paste(output_folder, "so_pancreasE14.5_int_appr3.rds", sep = "")
+outFile <- paste(output_folder, "so_pancreasE14.5_integrationWIP.rds", sep = "")
 saveRDS(so_pancreasE14.5, file = outFile)
+
+# Retrieve Seurat objects (interim step to retrieve later [necessary due to Memory capacity error])
+so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_integrationWIP.rds")
+so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_integrationWIP.rds")
 
 # Step 2: Find the common variable features between the two datasets
 common_var_features <- intersect(var_features_spleen, var_features_pancreas)
@@ -494,8 +508,21 @@ anchors <- FindIntegrationAnchors(object.list = objects,
                                   verbose = TRUE)
 
 # Remove the RNA assay from the anchors object to save memory
-anchors@object.list[[1]]@assays[["RNA"]] <- NULL
-anchors@object.list[[2]]@assays[["RNA"]] <- NULL
+# Currently disabled since this seems to disable finding markers?
+#anchors@object.list[[1]]@assays[["RNA"]] <- NULL
+#anchors@object.list[[2]]@assays[["RNA"]] <- NULL
+
+# Save IntegrationAnchorSet (interim step to retrieve later)
+# [necessary due to Memory capacity error]
+outFile <- paste(output_folder, "IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds", sep = "")
+saveRDS(anchors, file = outFile)
+
+# Clear objects from workspace or clear all/close R and retrieve saved IntegrationAnchorSet
+# [necessary due to Memory capacity error]
+rm(so_spleenE15.5)
+rm(so_pancreasE14.5)
+rm(objects)
+anchors <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds")
 
 # Step 5: Integrate the datasets using the found anchors
 so_spleenE15.5_pancreasE14.5_integrated <- IntegrateData(anchorset = anchors, dims = 1:30)
@@ -506,7 +533,7 @@ so_spleenE15.5_pancreasE14.5_integrated <- RunPCA(so_spleenE15.5_pancreasE14.5_i
 
 # Perform UMAP on integrated data
 so_spleenE15.5_pancreasE14.5_integrated <- RunUMAP(so_spleenE15.5_pancreasE14.5_integrated, 
-                                                   dims = 1:13, 
+                                                   dims = 1:30, 
                                                    reduction = "pca", 
                                                    reduction.name = "umap.integrated")
 
@@ -517,13 +544,13 @@ so_spleenE15.5_pancreasE14.5_integrated$orig.ident <- gsub("^MR4", "spleen_E15.5
 p <- DimPlot(so_spleenE15.5_pancreasE14.5_integrated, 
              reduction = "umap.integrated", 
              group.by = c("orig.ident", "seurat_clusters"))
-outFile <- paste(output_folder, "/int_appr3.UMAP.spleenE15.5_pancreasE14.5_integrated.pdf", sep = "")
+outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.UMAP.orig.ident.clusters.pdf", sep = "")
 pdf(outFile, width = 12, height = 5)
 plot(p)
 dev.off()
 
 # Save the Seurat object
-outFile <- paste(output_folder, "int_appr3.so_spleenE15.5_pancreasE14.5_integrated.rds", sep = "")
+outFile <- paste(output_folder, "so_spleenE15.5_pancreasE14.5_integrated.rds", sep = "")
 saveRDS(so_spleenE15.5_pancreasE14.5_integrated, file = outFile)
 
 ### Visualization
@@ -536,21 +563,12 @@ FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated,
             reduction = "umap.integrated",
             split.by = "orig.ident")
 
-goi <- c("Tlx1", "Barx1", "Nr2f2", "Klf4", "Fgf9", "Fgf10",
-         "Mki67", "Cdk1", "Cdkn1c", 
-         "Pi15", "Neurl3", "Ackr3", "Tnni1", "Dpt", "Itih2", "Klhl41", "Cybrd1", # upregulated in bulk RNA-seq with Fgf9 mutation (pancreas E14.5)
-         "Calcrl", "F2", "Fibin", "Myl9", "Atp1b4", "Col4a6", "Car2", "Sfrp2", 
-         "Synpo2", "Col25a1", "Tpm2", "Mmp23", "Sema3e", "Cpz", "Chrm2", "Rarres2", 
-         "Actg2", "Cxcl12", "Vwf", "Mgp", "Rerg", "Gm18194", "Ckm", "Clec11a", 
-         "Atp2a1", "Tnnt3", "Vgll2", "Oit3", "Dcn", "Lum", "Tspan8", "Lyz2", 
-         "Gli1", "Ndufa4l2", "Ank1", "Hmox1", "Ndrg4", "Tnnc1", "Gdf10", "Trac", 
-         "Myh7", "Dmtn", "Ednrb", "Cnn1", "Bmper", "Apoa1", "Isl2", "Loxl1", 
-         "Prss35", "Efemp1", "Slc4a1", "Abca8a", "Serpinb6b", "Edn1", "Gm48398", 
-         "Colec11", "Ahnak2", "Nov", "Sox10", "Igfbp6", "Masp1", "Robo2", "Chodl", 
-         "Tmem181b-ps", "Msln", "C3", "Dsc3", "Sh3rf2", "Onecut2", "Mpeg1", 
-         "Anxa1", "Prkg1", "Acta2")
+goi <- c("Tlx1", "Barx1", "Klf4", "Nr2f2", "Nkx2-5",
+         "Fgf8", "Fgf9", "Fgfr1", "Fgfr2", "Fgfr3", 
+         "Cdk1", "Cdkn1c", "Mki67",
+         "Epcam", "Upk3b", "Lum")
 outFile <- paste(output_folder,
-                 "/int_appr3.UMAP.spleenE15.5_pancreasE14.5_integrated.goi.orig.ident.pdf", 
+                 "/spleenE15.5_pancreasE14.5_integrated.UMAP.goi.orig.ident.pdf", 
                  sep = "")
 pdf(outFile, width = 12, height = 5)
 # Loop through each gene and check if it exists in the Seurat object
@@ -570,26 +588,39 @@ for (gene in goi) {
 
 dev.off()
 
-# Visualize marker genes as FeaturePlot
-goi <- c("Tlx1", "Barx1", "Pdx1", "Hoxa2", "Cpa1", "Epcam", "Upk3b", "Nkx2-5", 
-         "Lum", "Col6a2", "Cdkn1c", "Cdk1")
-outFile <- paste(output_folder,
-                 "/int_appr3.UMAP.spleenE15.5_pancreasE14.5_integrated.goi-markers.orig.ident.pdf", 
-                 sep = "")
-pdf(outFile, width = 12, height = 5)
-# Loop through each gene and check if it exists in the Seurat object
-for (gene in goi) {
-  if (gene %in% rownames(so_spleenE15.5_pancreasE14.5_integrated)) {
-    # Plot only if the gene is found in the Seurat object
-    p <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
-                     features = gene,
-                     reduction = "umap.integrated",
-                     split.by = "orig.ident")
-    plot(p)
-  } else {
-    # Print a message for missing genes (optional)
-    message(paste("Gene not found in data: ", gene))
-  }
+
+################################################################################
+######## MARKER ANALYSIS (following meeting with Maurizio on 03/27/2025) #######
+
+# Change the default assay to "SCT"
+DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
+
+## Identify top 25 markers + all per cluster
+# Correcting SCT counts before running FindAllMarkers
+so_spleenE15.5_pancreasE14.5_integrated <- PrepSCTFindMarkers(so_spleenE15.5_pancreasE14.5_integrated,
+                                                              assay = "SCT", 
+                                                              verbose = TRUE)
+markers <- FindAllMarkers(so_spleenE15.5_pancreasE14.5_integrated,
+                          min.pct = 0.1,
+                          test.use = "wilcox")
+
+# View markers for all clusters
+marker_table <- table(markers$cluster)  # Shows the number of markers for each cluster
+
+# Show markers for the first few clusters
+cluster_ids <- unique(so_spleenE15.5_pancreasE14.5_integrated$seurat_clusters)   # Get unique cluster identities
+num_clusters <- length(cluster_ids)   # Count the number of unique clusters
+
+# Loop over each cluster to extract and print top 25 markers
+for (cluster in cluster_ids) {
+  # Extract the top 25 markers for this cluster
+  top_markers <- head(markers[markers$cluster == cluster, ], 25)  # Get top 25 markers for the current cluster
+  # Print the top 20 markers for the current cluster
+  cat("Top 25 markers for cluster ", cluster, " are: \n", sep = "")
+  # Print the gene names (marker genes) for the current cluster
+  print(top_markers$gene)   # Assuming 'gene' is the column containing marker gene names
+  cat("\n")  # Add a line break between clusters
 }
 
-dev.off()
+# Save the marker list to a CSV file
+write.csv(markers, file = "/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/spleenE15.5_pancreasE14.5_integrated_markers_by_cluster.csv", row.names = TRUE)
