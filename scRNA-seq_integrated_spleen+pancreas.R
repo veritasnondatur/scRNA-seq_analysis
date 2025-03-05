@@ -590,7 +590,7 @@ dev.off()
 
 
 ################################################################################
-######## MARKER ANALYSIS (following meeting with Maurizio on 03/27/2025) #######
+######## MARKER ANALYSIS (following meeting with Maurizio on 02/27/2025) #######
 
 # Change the default assay to "SCT"
 DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
@@ -624,3 +624,20 @@ for (cluster in cluster_ids) {
 
 # Save the marker list to a CSV file
 write.csv(markers, file = "/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/spleenE15.5_pancreasE14.5_integrated_markers_by_cluster.csv", row.names = TRUE)
+
+
+################################################################################
+########### Exploratory ost-hoc analysis to explore integrated dataset #########
+# Can be run from here without preloading any of the other datasets
+
+# Load data
+so_spleenE15.5_pancreasE14.5_integrated <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_pancreasE14.5_integrated.rds")
+
+# Change the default assay to "SCT" (normalized dataset)
+DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
+
+# Visualize as FeaturePlot
+FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
+            features = "Nr2f2",
+            reduction = "umap.integrated",
+            split.by = "orig.ident")
