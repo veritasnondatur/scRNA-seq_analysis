@@ -113,11 +113,11 @@ so_spleenE15.5_filtered <- CreateSeuratObject(counts = filtered_counts,
                                               meta.data = so_spleenE15.5_filtered@meta.data)
 
 # Save the Seurat object
-so_path_spleenE15.5 <- paste(output_folder, "so_spleenE15.5_beforeNormalization.rds", sep = "")
-saveRDS(so_spleenE15.5_filtered, file = so_path_spleenE15.5)
+#so_path_spleenE15.5 <- paste(output_folder, "so_spleenE15.5_beforeNormalization.rds", sep = "")
+#saveRDS(so_spleenE15.5_filtered, file = so_path_spleenE15.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 50
+n_features <- 1000
 so_spleenE15.5_filtered_norm <- SCTransform(so_spleenE15.5_filtered,
                                             verbose = FALSE,
                                             variable.features.n = n_features)
@@ -166,11 +166,18 @@ plot(p)
 dev.off()
 
 # Store number of principle components in new variable (to be used later)
-pca_dim_sel <- 19
+pca_dim_sel <- 6
 
 # UMAP
 so_spleenE15.5_filtered_norm <- RunUMAP(so_spleenE15.5_filtered_norm,
                                         dims = 1:pca_dim_sel)
+
+# Save the Seurat object
+so_path_spleenE15.5 <- paste(output_folder, "so_spleenE15.5_norm_CCR.rds", sep = "")
+saveRDS(so_spleenE15.5_filtered_norm, file = so_path_spleenE15.5)
+
+# Load E15.5 spleen data (filtered)
+#so_spleenE15.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_norm_CCR.rds/")
 
 # Clustering (Leiden algorithm)
 so_spleenE15.5_filtered_norm <- FindNeighbors(so_spleenE15.5_filtered_norm,
@@ -267,11 +274,11 @@ so_pancreasE14.5_filtered <- CreateSeuratObject(counts = filtered_counts,
                                                 meta.data = so_pancreasE14.5_filtered@meta.data)
 
 # Save the Seurat object
-so_path_pancreasE14.5 <- paste(output_folder, "so_pancreasE14.5_beforeNormalization.rds", sep = "")
-saveRDS(so_pancreasE14.5_filtered, file = so_path_pancreasE14.5)
+#so_path_pancreasE14.5 <- paste(output_folder, "so_pancreasE14.5_beforeNormalization.rds", sep = "")
+#saveRDS(so_pancreasE14.5_filtered, file = so_path_pancreasE14.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 50
+n_features <- 1000
 so_pancreasE14.5_filtered_norm <- SCTransform(so_pancreasE14.5_filtered,
                                               verbose = TRUE,
                                               variable.features.n = n_features)
@@ -325,6 +332,13 @@ pca_dim_sel <- 7
 # UMAP
 so_pancreasE14.5_filtered_norm <- RunUMAP(so_pancreasE14.5_filtered_norm,
                                           dims = 1:pca_dim_sel)
+
+# Save the Seurat object
+so_path_pancreasE14.5 <- paste(output_folder, "so_pancreasE14.5_norm_CCR.rds", sep = "")
+saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
+
+# Load E15.5 spleen data (filtered)
+#so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_norm_CCR.rds")
 
 # Clustering (Leiden) - Seurat v5 should work similarly
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
