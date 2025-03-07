@@ -176,7 +176,7 @@ so_spleenE15.5_filtered_norm <- RunUMAP(so_spleenE15.5_filtered_norm,
 so_spleenE15.5_filtered_norm <- FindNeighbors(so_spleenE15.5_filtered_norm,
                                               dims = 1:pca_dim_sel)
 so_spleenE15.5_filtered_norm <- FindClusters(so_spleenE15.5_filtered_norm,
-                                             resolution = 0.1,
+                                             resolution = 0.3,
                                              algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -330,7 +330,7 @@ so_pancreasE14.5_filtered_norm <- RunUMAP(so_pancreasE14.5_filtered_norm,
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
                                                 dims = 1:pca_dim_sel)
 so_pancreasE14.5_filtered_norm <- FindClusters(so_pancreasE14.5_filtered_norm,
-                                                resolution = 0.1,
+                                                resolution = 0.3,
                                                 algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -423,7 +423,7 @@ so_spleenE15.5_pancreasE14.5 <- RunUMAP(so_spleenE15.5_pancreasE14.5,
 so_spleenE15.5_pancreasE14.5 <- FindNeighbors(so_spleenE15.5_pancreasE14.5,
                                               dims = 1:pca_dim_sel)
 so_spleenE15.5_pancreasE14.5 <- FindClusters(so_spleenE15.5_pancreasE14.5,
-                                              resolution = 0.1,
+                                              resolution = 0.3,
                                               algorithm = 4)
 
 # Visualize clusters as Dimplot (clusters)
@@ -638,6 +638,6 @@ DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
 
 # Visualize as FeaturePlot
 FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Nr2f2",
+            features = "Epcam",
             reduction = "umap.integrated",
             split.by = "orig.ident")
