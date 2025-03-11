@@ -183,7 +183,7 @@ so_spleenE15.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/colla
 so_spleenE15.5_filtered_norm <- FindNeighbors(so_spleenE15.5_filtered_norm,
                                               dims = 1:pca_dim_sel)
 so_spleenE15.5_filtered_norm <- FindClusters(so_spleenE15.5_filtered_norm,
-                                             resolution = 0.5,
+                                             resolution = 0.4,
                                              algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -344,7 +344,7 @@ so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/col
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
                                                 dims = 1:pca_dim_sel)
 so_pancreasE14.5_filtered_norm <- FindClusters(so_pancreasE14.5_filtered_norm,
-                                                resolution = 0.5,
+                                                resolution = 0.4,
                                                 algorithm = 4)
 
 # Visualize clusters as Dimplot
