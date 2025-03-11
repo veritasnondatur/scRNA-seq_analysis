@@ -117,7 +117,7 @@ so_spleenE15.5_filtered <- CreateSeuratObject(counts = filtered_counts,
 #saveRDS(so_spleenE15.5_filtered, file = so_path_spleenE15.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 1000
+n_features <- 2000
 so_spleenE15.5_filtered_norm <- SCTransform(so_spleenE15.5_filtered,
                                             verbose = FALSE,
                                             variable.features.n = n_features)
@@ -166,7 +166,7 @@ plot(p)
 dev.off()
 
 # Store number of principle components in new variable (to be used later)
-pca_dim_sel <- 6
+pca_dim_sel <- 8
 
 # UMAP
 so_spleenE15.5_filtered_norm <- RunUMAP(so_spleenE15.5_filtered_norm,
@@ -177,13 +177,13 @@ so_path_spleenE15.5 <- paste(output_folder, "so_spleenE15.5_norm_CCR.rds", sep =
 saveRDS(so_spleenE15.5_filtered_norm, file = so_path_spleenE15.5)
 
 # Load E15.5 spleen data (filtered)
-#so_spleenE15.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_norm_CCR.rds/")
+so_spleenE15.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_norm_CCR.rds")
 
 # Clustering (Leiden algorithm)
 so_spleenE15.5_filtered_norm <- FindNeighbors(so_spleenE15.5_filtered_norm,
                                               dims = 1:pca_dim_sel)
 so_spleenE15.5_filtered_norm <- FindClusters(so_spleenE15.5_filtered_norm,
-                                             resolution = 0.3,
+                                             resolution = 0.5,
                                              algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -278,7 +278,7 @@ so_pancreasE14.5_filtered <- CreateSeuratObject(counts = filtered_counts,
 #saveRDS(so_pancreasE14.5_filtered, file = so_path_pancreasE14.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 1000
+n_features <- 2000
 so_pancreasE14.5_filtered_norm <- SCTransform(so_pancreasE14.5_filtered,
                                               verbose = TRUE,
                                               variable.features.n = n_features)
@@ -327,7 +327,7 @@ plot(p)
 dev.off()
 
 # Store number of principle components in new variable (to be used later)
-pca_dim_sel <- 7
+pca_dim_sel <- 8
 
 # UMAP
 so_pancreasE14.5_filtered_norm <- RunUMAP(so_pancreasE14.5_filtered_norm,
@@ -338,13 +338,13 @@ so_path_pancreasE14.5 <- paste(output_folder, "so_pancreasE14.5_norm_CCR.rds", s
 saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
 
 # Load E15.5 spleen data (filtered)
-#so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_norm_CCR.rds")
+so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_norm_CCR.rds")
 
 # Clustering (Leiden) - Seurat v5 should work similarly
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
                                                 dims = 1:pca_dim_sel)
 so_pancreasE14.5_filtered_norm <- FindClusters(so_pancreasE14.5_filtered_norm,
-                                                resolution = 0.3,
+                                                resolution = 0.5,
                                                 algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -369,96 +369,6 @@ dev.off()
 # Save the Seurat object
 so_path_pancreasE14.5 <- paste(output_folder, "so_pancreasE14.5.rds", sep = "")
 saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
-
-
-################################################################################
-###################### Merge datasets (no integration) #########################
-# Increase the maximum global size to 32 GB (2 * 1024^3 bytes)
-options(future.globals.maxSize = 32 * 1024 * 1024 * 1024)
-
-# Load raw data (pre-processed Seurat objects produced above)
-so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_beforeNormalization.rds")
-
-so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_beforeNormalization.rds")
-
-# Check memory usage before and after merge (due to Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
-pryr::mem_used()
-
-# Merge E14.5 pancreas and E15.5 spleen datasets (stored in different layers)
-# Rename the datasets directly in the add.cell.ids argument
-so_spleenE15.5_pancreasE14.5 <- merge(so_spleenE15.5, y = so_pancreasE14.5,
-                                      add.cell.ids = c("spleenE15.5", "pancreasE14.5"),
-                                      project = "spleenE15.5_pancreasE14.5_merged")
-
-# Change the 'orig.ident' metadata to reflect the new names
-# Adjust the 'gsub' pattern based on actual 'orig.ident' values
-so_spleenE15.5_pancreasE14.5$orig.ident <- gsub("^MR4", "spleen_E15.5", so_spleenE15.5_pancreasE14.5$orig.ident)
-so_spleenE15.5_pancreasE14.5$orig.ident <- gsub("^pancreas_E14.5", "pancreas_E14.5", so_spleenE15.5_pancreasE14.5$orig.ident)
-
-# QC stats before filtering
-p <- RidgePlot(so_spleenE15.5_pancreasE14.5, 
-               features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), 
-               ncol = 1, log = TRUE,
-               group.by = "orig.ident")
-out_path <- paste(output_folder, "/spleenE15.5_pancreasE14.5.data.qcRidgepPlot.pdf", sep = "")
-pdf(out_path, width = 7, height = 10)
-plot(p)
-dev.off()
-
-# Normalization with SCTransform
-n_features <- 50
-so_spleenE15.5_pancreasE14.5 <- SCTransform(so_spleenE15.5_pancreasE14.5,
-                                            verbose = TRUE,
-                                            variable.features.n = n_features)
-
-# Scale Seurat object
-so_spleenE15.5_pancreasE14.5 <- ScaleData(so_spleenE15.5_pancreasE14.5)
-
-# Perform PCA analysis
-so_spleenE15.5_pancreasE14.5 <- RunPCA(so_spleenE15.5_pancreasE14.5,
-                                       verbose = FALSE, npcs = 30)
-
-# Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
-p <- ElbowPlot(so_spleenE15.5_pancreasE14.5,
-               ndims = 30)
-out_path <- paste(output_folder, "/spleenE15.5_pancreasE14.5.data.qc.ellbowplot.pdf", sep = "")
-pdf(out_path, width = 5, height = 5)
-plot(p)
-dev.off()
-
-# Store number of principle components in new variable (to be used later)
-pca_dim_sel <- 21
-
-# Run UMAP
-so_spleenE15.5_pancreasE14.5 <- RunUMAP(so_spleenE15.5_pancreasE14.5, 
-                                        dims = 1:pca_dim_sel)
-
-# Clustering (Leiden) - Seurat v5 should work similarly
-so_spleenE15.5_pancreasE14.5 <- FindNeighbors(so_spleenE15.5_pancreasE14.5,
-                                              dims = 1:pca_dim_sel)
-so_spleenE15.5_pancreasE14.5 <- FindClusters(so_spleenE15.5_pancreasE14.5,
-                                              resolution = 0.3,
-                                              algorithm = 4)
-
-# Visualize clusters as Dimplot (clusters)
-p <- DimPlot(object = so_spleenE15.5_pancreasE14.5,
-             reduction = 'umap',
-             group.by = 'seurat_clusters',
-             label = TRUE)
-out_path <- paste(output_folder, "/spleenE15.5_pancreasE14.5_preIntegration.UMAP.Dimplot.clusters.pdf", sep = "")
-pdf(out_path, width = 15, height = 10)
-plot(p)
-dev.off()
-
-# Visualize clusters as Dimplot ()
-p <- DimPlot(object = so_spleenE15.5_pancreasE14.5,
-             reduction = 'umap',
-             group.by = 'orig.ident',
-             label = TRUE)
-out_path <- paste(output_folder, "/spleenE15.5_pancreasE14.5_preIntegration.UMAP.Dimplot.orig.ident.pdf", sep = "")
-pdf(out_path, width = 15, height = 10)
-plot(p)
-dev.off()
 
 
 ################################################################################
@@ -500,8 +410,8 @@ outFile <- paste(output_folder, "so_pancreasE14.5_integrationWIP.rds", sep = "")
 saveRDS(so_pancreasE14.5, file = outFile)
 
 # Retrieve Seurat objects (interim step to retrieve later [necessary due to Memory capacity error])
-so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_integrationWIP.rds")
-so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_integrationWIP.rds")
+#so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_integrationWIP.rds")
+#so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_integrationWIP.rds")
 
 # Step 2: Find the common variable features between the two datasets
 common_var_features <- intersect(var_features_spleen, var_features_pancreas)
@@ -521,11 +431,6 @@ anchors <- FindIntegrationAnchors(object.list = objects,
                                   anchor.features = common_var_features,  # explicitly specify the features
                                   verbose = TRUE)
 
-# Remove the RNA assay from the anchors object to save memory
-# Currently disabled since this seems to disable finding markers?
-#anchors@object.list[[1]]@assays[["RNA"]] <- NULL
-#anchors@object.list[[2]]@assays[["RNA"]] <- NULL
-
 # Save IntegrationAnchorSet (interim step to retrieve later)
 # [necessary due to Memory capacity error]
 outFile <- paste(output_folder, "IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds", sep = "")
@@ -536,6 +441,10 @@ saveRDS(anchors, file = outFile)
 rm(so_spleenE15.5)
 rm(so_pancreasE14.5)
 rm(objects)
+rm(so_pancreasE14.5_filtered)
+rm(so_pancreasE14.5_filtered_norm)
+rm(so_spleenE15.5_filtered)
+rm(so_spleenE15.5_filtered_norm)
 anchors <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds")
 
 # Step 5: Integrate the datasets using the found anchors
@@ -641,7 +550,7 @@ write.csv(markers, file = "/Users/veralaub/Documents/postdoc/collaboration/Mauri
 
 
 ################################################################################
-########### Exploratory ost-hoc analysis to explore integrated dataset #########
+########### Exploratory post-hoc analysis to explore integrated dataset #########
 # Can be run from here without preloading any of the other datasets
 
 # Load data
@@ -652,6 +561,7 @@ DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
 
 # Visualize as FeaturePlot
 FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Epcam",
+            features = "Tlx1",
             reduction = "umap.integrated",
             split.by = "orig.ident")
+
