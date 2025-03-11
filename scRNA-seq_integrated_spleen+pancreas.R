@@ -183,7 +183,7 @@ so_spleenE15.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/colla
 so_spleenE15.5_filtered_norm <- FindNeighbors(so_spleenE15.5_filtered_norm,
                                               dims = 1:pca_dim_sel)
 so_spleenE15.5_filtered_norm <- FindClusters(so_spleenE15.5_filtered_norm,
-                                             resolution = 0.4,
+                                             resolution = 0.3,
                                              algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -344,7 +344,7 @@ so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/col
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
                                                 dims = 1:pca_dim_sel)
 so_pancreasE14.5_filtered_norm <- FindClusters(so_pancreasE14.5_filtered_norm,
-                                                resolution = 0.4,
+                                                resolution = 0.3,
                                                 algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -375,8 +375,10 @@ saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
 ######################## INTEGRATION OF THE TWO DATASETS #######################
 
 # Load raw data (pre-processed Seurat objects produced above)
+so_spleenE15.5 <- so_spleenE15.5_filtered_norm
 so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5.rds")
 
+so_pancreasE14.5 <- so_pancreasE14.5_filtered_norm
 so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5.rds")
 
 # Change the default assay to "SCT"
