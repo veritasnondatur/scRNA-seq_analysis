@@ -117,7 +117,7 @@ so_spleenE15.5_filtered <- CreateSeuratObject(counts = filtered_counts,
 #saveRDS(so_spleenE15.5_filtered, file = so_path_spleenE15.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 2000
+n_features <- 3000
 so_spleenE15.5_filtered_norm <- SCTransform(so_spleenE15.5_filtered,
                                             verbose = FALSE,
                                             variable.features.n = n_features)
@@ -278,7 +278,7 @@ so_pancreasE14.5_filtered <- CreateSeuratObject(counts = filtered_counts,
 #saveRDS(so_pancreasE14.5_filtered, file = so_path_pancreasE14.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 2000
+n_features <- 3000
 so_pancreasE14.5_filtered_norm <- SCTransform(so_pancreasE14.5_filtered,
                                               verbose = TRUE,
                                               variable.features.n = n_features)
@@ -563,7 +563,7 @@ DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
 
 # Visualize as FeaturePlot
 FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Tlx1",
+            features = "Fgf9",
             reduction = "umap.integrated",
             split.by = "orig.ident")
 
