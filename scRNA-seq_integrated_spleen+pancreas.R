@@ -337,14 +337,14 @@ so_pancreasE14.5_filtered_norm <- RunUMAP(so_pancreasE14.5_filtered_norm,
 so_path_pancreasE14.5 <- paste(output_folder, "so_pancreasE14.5_norm_CCR.rds", sep = "")
 saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
 
-# Load E15.5 spleen data (filtered)
+# Load E14.5 pancreas data (filtered)
 so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5_norm_CCR.rds")
 
 # Clustering (Leiden) - Seurat v5 should work similarly
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
                                                 dims = 1:pca_dim_sel)
 so_pancreasE14.5_filtered_norm <- FindClusters(so_pancreasE14.5_filtered_norm,
-                                                resolution = 0.1,
+                                                resolution = 0.2,
                                                 algorithm = 4)
 
 # Visualize clusters as Dimplot
