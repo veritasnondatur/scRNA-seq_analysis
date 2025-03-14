@@ -344,7 +344,7 @@ so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/col
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
                                                 dims = 1:pca_dim_sel)
 so_pancreasE14.5_filtered_norm <- FindClusters(so_pancreasE14.5_filtered_norm,
-                                                resolution = 0.1,
+                                                resolution = 0.2,
                                                 algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -439,7 +439,7 @@ anchors <- FindIntegrationAnchors(object.list = objects,
                                   normalization.method = "SCT", 
                                   dims = 1:10, 
                                   anchor.features = common_var_features,  # explicitly specify the features
-                                  k.anchor = 2,
+                                  k.anchor = 3,
                                   verbose = TRUE)
 
 # Save IntegrationAnchorSet (interim step to retrieve later)
@@ -456,7 +456,7 @@ rm(so_pancreasE14.5_filtered)
 rm(so_pancreasE14.5_filtered_norm)
 rm(so_spleenE15.5_filtered)
 rm(so_spleenE15.5_filtered_norm)
-anchors <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds")
+#anchors <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds")
 
 # Step 5: Integrate the datasets using the found anchors
 so_spleenE15.5_pancreasE14.5_integrated <- IntegrateData(anchorset = anchors, dims = 1:30)
@@ -467,7 +467,7 @@ so_spleenE15.5_pancreasE14.5_integrated <- RunPCA(so_spleenE15.5_pancreasE14.5_i
 
 # Perform UMAP on integrated data
 so_spleenE15.5_pancreasE14.5_integrated <- RunUMAP(so_spleenE15.5_pancreasE14.5_integrated, 
-                                                   dims = 1:30, 
+                                                   dims = 1:10, 
                                                    reduction = "pca", 
                                                    reduction.name = "umap.integrated")
 
@@ -572,7 +572,7 @@ DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
 
 # Visualize as FeaturePlot
 FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Barx1",
+            features = "Tlx1",
             reduction = "umap.integrated",
             split.by = "orig.ident")
 
