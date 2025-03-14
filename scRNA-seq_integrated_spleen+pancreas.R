@@ -568,6 +568,6 @@ FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated,
             split.by = "orig.ident")
 
 VlnPlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Barx1",
+            features = "Tlx1",
             split.by = "orig.ident")
 
