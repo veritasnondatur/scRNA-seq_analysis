@@ -374,6 +374,13 @@ saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
 ################################################################################
 ######################## INTEGRATION OF THE TWO DATASETS #######################
 
+# Load libraries
+library(Seurat)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(reticulate)
+
 # Define output folder (for results)
 output_folder <- "~/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/"
 
@@ -432,7 +439,7 @@ anchors <- FindIntegrationAnchors(object.list = objects,
                                   normalization.method = "SCT", 
                                   dims = 1:10, 
                                   anchor.features = common_var_features,  # explicitly specify the features
-                                  k.anchor = 3,
+                                  k.anchor = 2,
                                   verbose = TRUE)
 
 # Save IntegrationAnchorSet (interim step to retrieve later)
