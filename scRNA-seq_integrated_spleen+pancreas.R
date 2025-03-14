@@ -239,7 +239,7 @@ percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as need
 nFeature_RNA_min <- 2500  # minimum number of features per cell
 nFeature_RNA_max <- 10000 # minimum number of features per cell
 nCount_RNA_min <- 100  # minimum number of RNA counts per cell
-nCount_RNA_max <- 50000  # maximum number of RNA counts per cell, more conservative threshold than before equivalent to spleen data
+nCount_RNA_max <- 100000  # maximum number of RNA counts per cell
 
 # Subset the Seurat object (filter based on thresholds above)
 so_pancreasE14.5_filtered <- subset(so_pancreasE14.5,
@@ -344,7 +344,7 @@ so_pancreasE14.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/col
 so_pancreasE14.5_filtered_norm <- FindNeighbors(so_pancreasE14.5_filtered_norm,
                                                 dims = 1:pca_dim_sel)
 so_pancreasE14.5_filtered_norm <- FindClusters(so_pancreasE14.5_filtered_norm,
-                                                resolution = 0.2,
+                                                resolution = 0.1,
                                                 algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -399,14 +399,14 @@ pryr::mem_used()
 # Identify variable features for both datasets
 so_spleenE15.5 <- FindVariableFeatures(so_spleenE15.5, 
                                        selection.method = "vst", 
-                                       nfeatures = 2000)
+                                       nfeatures = 1000)
 so_pancreasE14.5 <- FindVariableFeatures(so_pancreasE14.5, 
                                          selection.method = "vst", 
-                                         nfeatures = 2000)
+                                         nfeatures = 1000)
 
 # Select integration features
 SelectIntegrationFeatures(object.list = list(so_spleenE15.5, so_pancreasE14.5),
-                          nfeatures = 2000,
+                          nfeatures = 1000,
                           verbose = TRUE)
 
 # Step 1: Get the variable features for both datasets
@@ -439,7 +439,7 @@ anchors <- FindIntegrationAnchors(object.list = objects,
                                   normalization.method = "SCT", 
                                   dims = 1:10, 
                                   anchor.features = common_var_features,  # explicitly specify the features
-                                  k.anchor = 3,
+                                  k.anchor = 5,
                                   verbose = TRUE)
 
 # Save IntegrationAnchorSet (interim step to retrieve later)
@@ -459,7 +459,7 @@ rm(so_spleenE15.5_filtered_norm)
 #anchors <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds")
 
 # Step 5: Integrate the datasets using the found anchors
-so_spleenE15.5_pancreasE14.5_integrated <- IntegrateData(anchorset = anchors, dims = 1:30)
+so_spleenE15.5_pancreasE14.5_integrated <- IntegrateData(anchorset = anchors, dims = 1:10)
 
 # Step 6: Perform scaling and PCA on the integrated data
 so_spleenE15.5_pancreasE14.5_integrated <- ScaleData(so_spleenE15.5_pancreasE14.5_integrated)
