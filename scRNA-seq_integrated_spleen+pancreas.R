@@ -374,11 +374,12 @@ saveRDS(so_pancreasE14.5_filtered_norm, file = so_path_pancreasE14.5)
 ################################################################################
 ######################## INTEGRATION OF THE TWO DATASETS #######################
 
+# Define output folder (for results)
+output_folder <- "~/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/"
+
 # Load raw data (pre-processed Seurat objects produced above)
-so_spleenE15.5 <- so_spleenE15.5_filtered_norm
 so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5.rds")
 
-so_pancreasE14.5 <- so_pancreasE14.5_filtered_norm
 so_pancreasE14.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_pancreasE14.5.rds")
 
 # Change the default assay to "SCT"
@@ -406,10 +407,10 @@ var_features_spleen <- so_spleenE15.5@assays[["SCT"]]@var.features
 var_features_pancreas <- so_pancreasE14.5@assays[["SCT"]]@var.features
 
 # Save Seurat objects (interim step to retrieve later [necessary due to Memory capacity error])
-outFile <- paste(output_folder, "so_spleenE15.5_integrationWIP.rds", sep = "")
-saveRDS(so_spleenE15.5, file = outFile)
-outFile <- paste(output_folder, "so_pancreasE14.5_integrationWIP.rds", sep = "")
-saveRDS(so_pancreasE14.5, file = outFile)
+#outFile <- paste(output_folder, "so_spleenE15.5_integrationWIP.rds", sep = "")
+#saveRDS(so_spleenE15.5, file = outFile)
+#outFile <- paste(output_folder, "so_pancreasE14.5_integrationWIP.rds", sep = "")
+#saveRDS(so_pancreasE14.5, file = outFile)
 
 # Retrieve Seurat objects (interim step to retrieve later [necessary due to Memory capacity error])
 #so_spleenE15.5 <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_integrationWIP.rds")
@@ -429,14 +430,15 @@ objects <- PrepSCTIntegration(object.list = objects,
 # Step 4: Find integration anchors - make sure to specify the common features
 anchors <- FindIntegrationAnchors(object.list = objects, 
                                   normalization.method = "SCT", 
-                                  dims = 1:30, 
+                                  dims = 1:10, 
                                   anchor.features = common_var_features,  # explicitly specify the features
+                                  k.anchor = 3,
                                   verbose = TRUE)
 
 # Save IntegrationAnchorSet (interim step to retrieve later)
 # [necessary due to Memory capacity error]
-outFile <- paste(output_folder, "IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds", sep = "")
-saveRDS(anchors, file = outFile)
+#outFile <- paste(output_folder, "IntegrationAnchorSet_spleenE15.5_pancreasE14.5.rds", sep = "")
+#saveRDS(anchors, file = outFile)
 
 # Clear objects from workspace or clear all/close R and retrieve saved IntegrationAnchorSet
 # [necessary due to Memory capacity error]
