@@ -77,7 +77,7 @@ dev.off()
 percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as needed)
 nFeature_RNA_min <- 1000  # minimum number of features per cell
 nFeature_RNA_max <- 10000 # minimum number of features per cell
-nCount_RNA_min <- 100  # minimum number of RNA counts per cell
+nCount_RNA_min <- 1500  # minimum number of RNA counts per cell
 nCount_RNA_max <- 50000  # maximum number of RNA counts per cell
 
 # Subset the Seurat object (filter based on thresholds above)
@@ -117,7 +117,7 @@ so_spleenE15.5_filtered <- CreateSeuratObject(counts = filtered_counts,
 #saveRDS(so_spleenE15.5_filtered, file = so_path_spleenE15.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 2000
+n_features <- 3000
 so_spleenE15.5_filtered_norm <- SCTransform(so_spleenE15.5_filtered,
                                             verbose = FALSE,
                                             variable.features.n = n_features)
@@ -183,7 +183,7 @@ so_spleenE15.5_filtered_norm <- readRDS("/Users/veralaub/Documents/postdoc/colla
 so_spleenE15.5_filtered_norm <- FindNeighbors(so_spleenE15.5_filtered_norm,
                                               dims = 1:pca_dim_sel)
 so_spleenE15.5_filtered_norm <- FindClusters(so_spleenE15.5_filtered_norm,
-                                             resolution = 0.1,
+                                             resolution = 0.3,
                                              algorithm = 4)
 
 # Visualize clusters as Dimplot
@@ -236,10 +236,10 @@ dev.off()
 
 # Define thresholds for filtering cells (can be adapted ad gusto)
 percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as needed)
-nFeature_RNA_min <- 2500  # minimum number of features per cell
-nFeature_RNA_max <- 15000 # minimum number of features per cell
-nCount_RNA_min <- 100  # minimum number of RNA counts per cell
-nCount_RNA_max <- 50000  # maximum number of RNA counts per cell
+nFeature_RNA_min <- 2800  # minimum number of features per cell
+nFeature_RNA_max <- 10000 # minimum number of features per cell
+nCount_RNA_min <- 5000  # minimum number of RNA counts per cell
+nCount_RNA_max <- 100000  # maximum number of RNA counts per cell
 
 # Subset the Seurat object (filter based on thresholds above)
 so_pancreasE14.5_filtered <- subset(so_pancreasE14.5,
@@ -278,7 +278,7 @@ so_pancreasE14.5_filtered <- CreateSeuratObject(counts = filtered_counts,
 #saveRDS(so_pancreasE14.5_filtered, file = so_path_pancreasE14.5)
 
 # Normalization with SCTransform (has not changed in Seurat v5)
-n_features <- 2000
+n_features <- 3000
 so_pancreasE14.5_filtered_norm <- SCTransform(so_pancreasE14.5_filtered,
                                               verbose = TRUE,
                                               variable.features.n = n_features)
@@ -327,7 +327,7 @@ plot(p)
 dev.off()
 
 # Store number of principle components in new variable (to be used later)
-pca_dim_sel <- 8
+pca_dim_sel <- 9
 
 # UMAP
 so_pancreasE14.5_filtered_norm <- RunUMAP(so_pancreasE14.5_filtered_norm,
@@ -570,3 +570,4 @@ FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated,
 VlnPlot(so_spleenE15.5_pancreasE14.5_integrated, 
             features = "Barx1",
             split.by = "orig.ident")
+
