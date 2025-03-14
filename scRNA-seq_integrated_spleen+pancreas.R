@@ -77,7 +77,7 @@ dev.off()
 percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as needed)
 nFeature_RNA_min <- 1000  # minimum number of features per cell
 nFeature_RNA_max <- 10000 # minimum number of features per cell
-nCount_RNA_min <- 1500  # minimum number of RNA counts per cell
+nCount_RNA_min <- 100  # minimum number of RNA counts per cell
 nCount_RNA_max <- 50000  # maximum number of RNA counts per cell
 
 # Subset the Seurat object (filter based on thresholds above)
@@ -236,10 +236,10 @@ dev.off()
 
 # Define thresholds for filtering cells (can be adapted ad gusto)
 percent.mt_max <- 5  # maximum percentage of mitochondrial genes (adjust as needed)
-nFeature_RNA_min <- 2800  # minimum number of features per cell
+nFeature_RNA_min <- 2500  # minimum number of features per cell
 nFeature_RNA_max <- 10000 # minimum number of features per cell
-nCount_RNA_min <- 5000  # minimum number of RNA counts per cell
-nCount_RNA_max <- 100000  # maximum number of RNA counts per cell
+nCount_RNA_min <- 100  # minimum number of RNA counts per cell
+nCount_RNA_max <- 50000  # maximum number of RNA counts per cell, more conservative threshold than before equivalent to spleen data
 
 # Subset the Seurat object (filter based on thresholds above)
 so_pancreasE14.5_filtered <- subset(so_pancreasE14.5,
