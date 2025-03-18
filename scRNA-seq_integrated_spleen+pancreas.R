@@ -467,11 +467,32 @@ so_spleenE15.5_pancreasE14.5_integrated <- IntegrateData(anchorset = anchors,
 so_spleenE15.5_pancreasE14.5_integrated <- ScaleData(so_spleenE15.5_pancreasE14.5_integrated)
 so_spleenE15.5_pancreasE14.5_integrated <- RunPCA(so_spleenE15.5_pancreasE14.5_integrated, verbose = FALSE)
 
+# Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
+p <- ElbowPlot(so_spleenE15.5_pancreasE14.5_integrated, ndims = 20)
+out_path <- paste(output_folder, "integrated_spleenE15.5_pancreasE14.5.data.qc.ellbowplot.pdf", sep = "")
+pdf(out_path, width = 5, height = 5)
+plot(p)
+dev.off()
+
+# Store number of principle components in new variable (to be used later)
+pca_dim_sel <- 9
+
 # Perform UMAP on integrated data
 so_spleenE15.5_pancreasE14.5_integrated <- RunUMAP(so_spleenE15.5_pancreasE14.5_integrated, 
-                                                   dims = 1:10, 
+                                                   dims = 1:pca_dim_sel, 
                                                    reduction = "pca", 
                                                    reduction.name = "umap.integrated")
+
+# Change the default assay to "SCT" (normalized dataset)
+DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
+
+# Clustering (Leiden) - Seurat v5 should work similarly
+so_spleenE15.5_pancreasE14.5_integrated <- FindNeighbors(so_spleenE15.5_pancreasE14.5_integrated,
+                                                         dims = 1:pca_dim_sel)
+so_spleenE15.5_pancreasE14.5_integrated <- FindClusters(so_spleenE15.5_pancreasE14.5_integrated,
+                                                        resolution = 0.5,
+                                                        algorithm = 4,
+                                                        graph.name = "integrated_snn")
 
 # Change the 'orig.ident' metadata of E15.5 spleen (to match name)
 so_spleenE15.5_pancreasE14.5_integrated$orig.ident <- gsub("^MR4", "spleen_E15.5", so_spleenE15.5_pancreasE14.5_integrated$orig.ident)
@@ -502,7 +523,7 @@ FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated,
 goi <- c("Tlx1", "Barx1", "Klf4", "Nr2f2", "Nkx2-5",
          "Fgf8", "Fgf9", "Fgfr1", "Fgfr2", "Fgfr3", 
          "Cdk1", "Cdkn1c", "Mki67",
-         "Epcam", "Upk3b", "Lum")
+         "Epcam", "Upk3b", "Lum", "Pdpn", "Cxcl13")
 outFile <- paste(output_folder,
                  "/spleenE15.5_pancreasE14.5_integrated.UMAP.goi.orig.ident.pdf", 
                  sep = "")
@@ -569,16 +590,19 @@ write.csv(markers, file = "/Users/veralaub/Documents/postdoc/collaboration/Mauri
 # Load data
 so_spleenE15.5_pancreasE14.5_integrated <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_pancreasE14.5_integrated.rds")
 
-# Change the default assay to "SCT" (normalized dataset)
-DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
-
 # Visualize as FeaturePlot
 FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Tlx1",
+            features = "Cxcl13",
             reduction = "umap.integrated",
             split.by = "orig.ident")
 
+DimPlot(object = so_spleenE15.5_pancreasE14.5_integrated,
+        reduction = "umap.integrated",
+        group.by = 'seurat_clusters',
+        split.by = 'orig.ident',
+        label = TRUE)
+
 VlnPlot(so_spleenE15.5_pancreasE14.5_integrated, 
-            features = "Tlx1",
+            features = c("Tlx1", "Klf4"),
             split.by = "orig.ident")
 
