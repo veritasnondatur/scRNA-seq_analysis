@@ -490,7 +490,7 @@ DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
 so_spleenE15.5_pancreasE14.5_integrated <- FindNeighbors(so_spleenE15.5_pancreasE14.5_integrated,
                                                          dims = 1:pca_dim_sel)
 so_spleenE15.5_pancreasE14.5_integrated <- FindClusters(so_spleenE15.5_pancreasE14.5_integrated,
-                                                        resolution = 0.5,
+                                                        resolution = 0.3,
                                                         algorithm = 4,
                                                         graph.name = "integrated_snn")
 
@@ -505,6 +505,17 @@ outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.UMAP.orig
 pdf(outFile, width = 12, height = 5)
 plot(p)
 dev.off()
+
+p <- DimPlot(object = so_spleenE15.5_pancreasE14.5_integrated,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             split.by = 'orig.ident',
+             label = TRUE)
+outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.UMAP.orig.ident.clusters_split.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
 
 # Save the Seurat object
 outFile <- paste(output_folder, "so_spleenE15.5_pancreasE14.5_integrated.rds", sep = "")
