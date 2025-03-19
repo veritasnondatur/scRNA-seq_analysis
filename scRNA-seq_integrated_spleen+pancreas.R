@@ -595,7 +595,7 @@ write.csv(markers, file = "/Users/veralaub/Documents/postdoc/collaboration/Mauri
 
 
 ################################################################################
-########### Exploratory post-hoc analysis to explore integrated dataset #########
+########### Exploratory post-hoc analysis to explore integrated dataset ########
 # Can be run from here without preloading any of the other datasets
 
 # Load data
@@ -617,3 +617,83 @@ VlnPlot(so_spleenE15.5_pancreasE14.5_integrated,
             features = c("Tlx1", "Klf4"),
             split.by = "orig.ident")
 
+
+################################################################################
+################## Removal of Epcam+ cells in integrated dataset ###############
+#################### After meeting with Maurizio 03/18/2025 ####################
+
+# Check if Epcam is in the gene list
+"Epcam" %in% rownames(so_spleenE15.5_pancreasE14.5_integrated)
+
+# Subset to remove cells expressing Epcam
+so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- subset(
+  so_spleenE15.5_pancreasE14.5_integrated,
+  subset = Epcam < 1  # Adjust the threshold as needed (e.g., <1 means no or low expression of Epcam)
+)
+
+# Check Epcam expression in the new object
+table(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam$Epcam)
+
+# Visualize datasets as UMAP after removal of Epcam+ cells
+p <- DimPlot(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam, 
+             reduction = "umap.integrated", 
+             group.by = c("orig.ident", "seurat_clusters"))
+outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.UMAP.orig.ident.clusters_noEpcam+.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+p <- DimPlot(object = so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             split.by = 'orig.ident',
+             label = TRUE)
+outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.UMAP.orig.ident.clusters_split_noEpcam+.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+# Save the Seurat object
+outFile <- paste(output_folder, "so_spleenE15.5_pancreasE14.5_integrated_no_Epcam.rds", sep = "")
+saveRDS(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam, file = outFile)
+
+
+################################ Visualization #################################
+# Change the default assay to "SCT"
+DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam) <- "SCT"
+
+# Visualize as FeaturePlot
+goi <- c("Tlx1", "Barx1", "Klf4", "Nr2f2", "Nkx2-5",
+         "Fgf8", "Fgf9", "Fgfr1", "Fgfr2", "Fgfr3", 
+         "Cdk1", "Cdkn1c", "Mki67",
+         "Epcam", "Upk3b", "Lum", "Pdpn", "Cxcl13")
+outFile <- paste(output_folder,
+                 "/spleenE15.5_pancreasE14.5_integrated.UMAP.goi.orig.ident_no_Epcam+.pdf", 
+                 sep = "")
+pdf(outFile, width = 12, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident",
+                     pt.size = 0.2)
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+# Visualize as Violinplot
+p <- VlnPlot(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam, 
+             features = c("Tlx1", "Barx1", "Klf4"),
+             split.by = "orig.ident")
+outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.VlnPlot.orig.ident.clusters_split_noEpcam+.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
