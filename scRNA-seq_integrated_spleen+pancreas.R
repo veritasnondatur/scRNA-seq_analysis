@@ -775,12 +775,18 @@ dev.off()
 
 ## Identify top 100 markers + all per cluster
 # Correcting SCT counts before running FindAllMarkers
-so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- PrepSCTFindMarkers(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
-                                                                       assay = "SCT", 
-                                                                       verbose = TRUE)
-markers <- FindAllMarkers(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
-                          min.pct = 0.1,
-                          test.use = "wilcox")
+DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam) <- "integrated"
+
+so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- PrepSCTFindMarkers(
+  so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+  assay = "integrated",  # Use the integrated assay for analysis
+  verbose = TRUE
+)
+markers <- FindAllMarkers(
+  so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+  min.pct = 0.1,
+  test.use = "wilcox"
+)
 
 # View markers for all clusters
 marker_table <- table(markers$cluster)  # Shows the number of markers for each cluster
