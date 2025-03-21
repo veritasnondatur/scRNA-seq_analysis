@@ -563,7 +563,7 @@ dev.off()
 # Change the default assay to "SCT"
 DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated) <- "SCT"
 
-## Identify top 25 markers + all per cluster
+## Identify top 100 markers + all per cluster
 # Correcting SCT counts before running FindAllMarkers
 so_spleenE15.5_pancreasE14.5_integrated <- PrepSCTFindMarkers(so_spleenE15.5_pancreasE14.5_integrated,
                                                               assay = "SCT", 
@@ -582,9 +582,9 @@ num_clusters <- length(cluster_ids)   # Count the number of unique clusters
 # Loop over each cluster to extract and print top 25 markers
 for (cluster in cluster_ids) {
   # Extract the top 25 markers for this cluster
-  top_markers <- head(markers[markers$cluster == cluster, ], 25)  # Get top 25 markers for the current cluster
+  top_markers <- head(markers[markers$cluster == cluster, ], 100)  # Get top 25 markers for the current cluster
   # Print the top 20 markers for the current cluster
-  cat("Top 25 markers for cluster ", cluster, " are: \n", sep = "")
+  cat("Top 100 markers for cluster ", cluster, " are: \n", sep = "")
   # Print the gene names (marker genes) for the current cluster
   print(top_markers$gene)   # Assuming 'gene' is the column containing marker gene names
   cat("\n")  # Add a line break between clusters
@@ -697,3 +697,108 @@ outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.VlnPlot.o
 pdf(outFile, width = 12, height = 5)
 plot(p)
 dev.off()
+
+
+################################################################################
+########## Re-clustering of integrated dataset with only Epcam- cells ##########
+# Can be run from here without preloading any of the other datasets
+
+# Load data
+so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- readRDS("/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/so_spleenE15.5_pancreasE14.5_integrated_no_Epcam.rds")
+
+# Change the default assay to "SCT"
+DefaultAssay(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam) <- "SCT"
+
+# Perform scaling and PCA on the integrated data with removed Epcam+ cells
+so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- ScaleData(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam)
+
+# Store number of principle components in new variable (to be used later)
+pca_dim_sel <- 9
+
+# Clustering (Leiden) - Seurat v5 should work similarly
+so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- FindNeighbors(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+                                                                  dims = 1:pca_dim_sel)
+so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- FindClusters(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+                                                                 resolution = 0.3,
+                                                                 algorithm = 4,
+                                                                 graph.name = "integrated_snn")
+
+p <- DimPlot(object = so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             split.by = 'orig.ident',
+             label = TRUE)
+outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.UMAP.orig.ident.clusters.re-clustering.noEpcam+.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+# Save the Seurat object
+outFile <- paste(output_folder, "so_spleenE15.5_pancreasE14.5_integrated_re-clustered_no_Epcam.rds", sep = "")
+saveRDS(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam, file = outFile)
+
+# Visualize as FeaturePlot
+goi <- c("Tlx1", "Barx1", "Klf4", "Nr2f2", "Nkx2-5",
+         "Fgf8", "Fgf9", "Fgfr1", "Fgfr2", "Fgfr3", 
+         "Cdk1", "Cdkn1c", "Mki67",
+         "Epcam", "Upk3b", "Lum", "Pdpn", "Cxcl13")
+outFile <- paste(output_folder,
+                 "/spleenE15.5_pancreasE14.5_integrated.UMAP.goi.orig.ident_re-clustered_no_Epcam+.pdf", 
+                 sep = "")
+pdf(outFile, width = 12, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident",
+                     pt.size = 0.2)
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+# Visualize as Violinplot
+p <- VlnPlot(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam, 
+             features = c("Tlx1", "Barx1", "Klf4"),
+             split.by = "orig.ident")
+outFile <- paste(output_folder, "/spleenE15.5_pancreasE14.5_integrated.VlnPlot.orig.ident.clusters_re-clustered_split_noEpcam+.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+## Identify top 100 markers + all per cluster
+# Correcting SCT counts before running FindAllMarkers
+so_spleenE15.5_pancreasE14.5_integrated_no_Epcam <- PrepSCTFindMarkers(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+                                                                       assay = "SCT", 
+                                                                       verbose = TRUE)
+markers <- FindAllMarkers(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam,
+                          min.pct = 0.1,
+                          test.use = "wilcox")
+
+# View markers for all clusters
+marker_table <- table(markers$cluster)  # Shows the number of markers for each cluster
+
+# Show markers for the first few clusters
+cluster_ids <- unique(so_spleenE15.5_pancreasE14.5_integrated_no_Epcam$seurat_clusters)   # Get unique cluster identities
+num_clusters <- length(cluster_ids)   # Count the number of unique clusters
+
+# Loop over each cluster to extract and print top 25 markers
+for (cluster in cluster_ids) {
+  # Extract the top 100 markers for this cluster
+  top_markers <- head(markers[markers$cluster == cluster, ], 100)  # Get top 25 markers for the current cluster
+  # Print the top 100 markers for the current cluster
+  cat("Top 100 markers for cluster ", cluster, " are: \n", sep = "")
+  # Print the gene names (marker genes) for the current cluster
+  print(top_markers$gene)   # Assuming 'gene' is the column containing marker gene names
+  cat("\n")  # Add a line break between clusters
+}
+
+# Save the marker list to a CSV file
+write.csv(markers, file = "/Users/veralaub/Documents/postdoc/collaboration/Maurizio/WIP_scRNA-seq_integrated_spleen+pancreas/results/spleenE15.5_pancreasE14.5_integrated_markers_by_cluster_noEpcam+Cells.csv", row.names = TRUE)
