@@ -348,6 +348,7 @@ output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimb
 options(future.globals.maxSize = 2 * 1024 * 1024 * 1024)
 
 # Read barcodes, features (genes) and matrix files
+# Downloaded from GEO: GSM4227225
 hindlimb_E13.5 <- Read10X(data.dir = '/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_mouse_hindlimb_publicDomain/GSM4227225_hindlimb_E13.5')
 
 # Create Seurat object
@@ -513,6 +514,7 @@ output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimb
 options(future.globals.maxSize = 2 * 1024 * 1024 * 1024)
 
 # Read barcodes, features (genes) and matrix files
+# Downloaded from GEO: GSM4227226
 hindlimb_E15.5 <- Read10X(data.dir = '/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_mouse_hindlimb_publicDomain/GSM4227226_hindlimb_E15.5')
 
 # Create Seurat object
@@ -678,6 +680,7 @@ output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimb
 options(future.globals.maxSize = 2 * 1024 * 1024 * 1024)
 
 # Read barcodes, features (genes) and matrix files
+# Downloaded from GEO: GSM4227227
 hindlimb_E18.5 <- Read10X(data.dir = '/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_mouse_hindlimb_publicDomain/GSM4227227_hindlimb_E18.5')
 
 # Create Seurat object
@@ -948,14 +951,14 @@ so_midface_E9.5 <- RunPCA(so_midface_E9.5,
 )
 
 # Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
-p <- ElbowPlot(so_midface_E9.5, ndims = 100)
+p <- ElbowPlot(so_midface_E9.5, ndims = 20)
 out_file <- paste(output_folder, "midface_E9.5.qc.ellbowplot.pdf", sep = "")
 pdf(out_file, width = 5, height = 5)
 plot(p)
 dev.off()
 
 # Number of features selection by elbow method
-pca_dim_sel <-8   
+pca_dim_sel <- 15   
 
 #UMAP
 so_midface_E9.5 <- RunUMAP(so_midface_E9.5, dims = 1:pca_dim_sel)
@@ -986,4 +989,13 @@ plot(p)
 dev.off()
 
 # Save Seurat object
-saveRDS(so_midface_E9.5, file = "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5_midfaceE9.5,E10.5,E11.5/pre_analysis_midfaceE9.5/so_midface_E9.5.rds")
+saveRDS(so_midface_E9.5, file = "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE9.5/so_midface_E9.5.rds")
+
+# Load data
+so_midface_E9.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE9.5/so_midface_E9.5.rds")
+
+FeaturePlot(so_midface_E9.5, 
+            features = "Pbx1",
+            #reduction = "umap.integrated",
+            #split.by = "orig.ident",
+            pt.size = 0.2)
