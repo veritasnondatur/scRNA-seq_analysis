@@ -167,10 +167,37 @@ saveRDS(so_hindlimb_E10.5, file = "~/Documents/postdoc/bioinformatics/results/in
 so_hindlimb_E10.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE10.5/so_hindlimb_E10.5.rds")
 
 FeaturePlot(so_hindlimb_E10.5, 
-            features = "Runx2",
+            features = "Zfhx3",
             #reduction = "umap.integrated",
             #split.by = "orig.ident",
             pt.size = 0.2)
+
+# UMAP overlay of goi
+goi <- c("Pbx1", "Pbx2", "Pbx3", "Hand2",                                                  # Pbx1/2, Hand2
+         "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7", "Hoxa9",   # Hoxa cluster
+         "Hoxa10", "Hoxa11", "Hoxa13", "Hoxd13")
+out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  p <- FeaturePlot(so_hindlimb_E10.5, gene)
+  plot(p)
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_hindlimb_E10.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# Definition of clusters via marker genes
+goi <- c("Lin28a", "Lin28b", "Sall4", "Fzd7",      # undifferentiated cells; Fernandez-Guerrero et al., 2021
+         "Bmp2", "Col2a1", "Gdf5", "Nog",          # chondrogenic differentiation and limb skeletal, digit and joint morphogenesis; Fernandez-Guerrero et al., 2021
+         "Rarg", "Cyp26b1"                        # retinoic acid pathway/skeletal patterning; Fernandez-Guerrero et al., 2021
+         )
 
 ################################################################################
 ################## Pre-analysis of hindlimb_E11.5 dataset  #####################
@@ -337,6 +364,10 @@ FeaturePlot(so_hindlimb_E11.5,
             #reduction = "umap.integrated",
             #split.by = "orig.ident",
             pt.size = 0.2)
+
+FeaturePlot(so_hindlimb_E11.5, features = goi,
+            cols = c('lightgray', 'blue'),
+            pt.size = 0.01)   # Adjust pt.size to your desired value
 
 
 ################################################################################
@@ -1004,6 +1035,11 @@ FeaturePlot(so_hindlimb_E13.5,
             #split.by = "orig.ident",
             pt.size = 0.2)
 
+FeaturePlot(so_hindlimb_E13.5, features = goi,
+            cols = c('lightgray', 'blue'),
+            pt.size = 0.01)   # Adjust pt.size to your desired value
+
+
 
 ################################################################################
 ################## Pre-analysis of autopod_E13.5 dataset  #####################
@@ -1333,10 +1369,14 @@ saveRDS(so_hindlimb_E15.5, file = "~/Documents/postdoc/bioinformatics/results/in
 so_hindlimb_E15.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE15.5/so_hindlimb_E15.5.rds")
 
 FeaturePlot(so_hindlimb_E15.5, 
-            features = "Pbx1",
+            features = "Fgf10",
             #reduction = "umap.integrated",
             #split.by = "orig.ident",
             pt.size = 0.2)
+
+FeaturePlot(so_hindlimb_E15.5, features = goi,
+            cols = c('lightgray', 'blue'),
+            pt.size = 0.01)   # Adjust pt.size to your desired value
 
 ################################################################################
 ################## Pre-analysis of hindlimb_E18.5 dataset  #####################
