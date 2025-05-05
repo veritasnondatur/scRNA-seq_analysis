@@ -173,7 +173,7 @@ FeaturePlot(so_hindlimb_E10.5,
             pt.size = 0.2)
 
 # UMAP overlay of goi
-goi <- c("Pbx1", "Pbx2", "Pbx3", "Hand2",                                                  # Pbx1/2, Hand2
+goi <- c("Pbx1", "Pbx2", "Pbx3", "Hand2", "Irx3","Irx5", "Meis1", "Meis2",         # TALE-HD and Hand2
          "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7", "Hoxa9",   # Hoxa cluster
          "Hoxa10", "Hoxa11", "Hoxa13", "Hoxd13")
 out_file <- paste(out_folder, "/hindlimb_E10.5.UMAP.goi.pdf", sep = "")
@@ -193,11 +193,6 @@ pdf(out_file, width = 25, height = 20)
 plot(p)
 dev.off()
 
-# Definition of clusters via marker genes
-goi <- c("Lin28a", "Lin28b", "Sall4", "Fzd7",      # undifferentiated cells; Fernandez-Guerrero et al., 2021
-         "Bmp2", "Col2a1", "Gdf5", "Nog",          # chondrogenic differentiation and limb skeletal, digit and joint morphogenesis; Fernandez-Guerrero et al., 2021
-         "Rarg", "Cyp26b1"                        # retinoic acid pathway/skeletal patterning; Fernandez-Guerrero et al., 2021
-         )
 
 ################################################################################
 ################## Pre-analysis of hindlimb_E11.5 dataset  #####################
@@ -2037,14 +2032,581 @@ FeaturePlot(so_midface_E11.5,
             pt.size = 0.2)
 
 ################################################################################
-# List of marker genes to determine cell types (from literature)
-goi <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4", "Tcf3", "Tcf4", "Tcf12", "Hand1", "Hand2",
-         "Hoxd13",          # Kelly et al., 2020: cartilage precursors @E11.5
-         "Tbx13",           # Kelly et al., 2020: bone/tendon precursors @E11.5
-         "Krt14",           # Kelly et al., 2020: skin @E11.5
-         "Cdh5",            # Kelly et al., 2020: vasculature @E11.5
-         "Lyz2",            # Kelly et al., 2020: blood @E11.5
-         "Col2a1",          # Kelly et al., 2020: more mature cartilage @E13.5
-         "Col1a1",,         # Kelly et al., 2020: more mature cartilage and bone/tendon @E13.5
-         "",
-         "",)
+############################ DEFINITION OF CLUSTERS ############################
+
+### GOI for TALE-HD/Hand2/Hox cluster, cell type and spatial distribution
+# TALE-HD, Hand2 and Hox expression
+goi <- c("Pbx1", "Pbx2", "Pbx3", "Hand2", "Irx3","Irx5", "Meis1", "Meis2",      # TALE-HD and Hand2
+         "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7",         # Hox cluster genes
+         "Hoxa9", "Hoxa10", "Hoxa11", "Hoxa13", "Hoxd13")
+
+# Celltype-clusters via marker genes
+goi_celltype <- c("Lin28a", "Sall4", "Fzd7",                                    # undifferentiated cells; Fernandez-Guerrero et al., 2021
+                  "Bmp2", "Col2a1", "Sox9",                                     # chondrogenic differentiation and limb skeletal, digit and joint morphogenesis; Fernandez-Guerrero et al., 2021
+                  "Runx2", "Dlx5", "Sp7",                                       # osteoblast progenitor and differentiation marker 
+                  "Alx3", "Alx4",                                               # proximal anterior mesoderm; Fernandez-Guerrero et al., 2021                                             # autopod-associated genes; Fernandez-Guerrero et al., 2021
+                  "Asb4",                                                       # distal anterior mesoderm; Fernandez-Guerrero et al., 2021 
+                  "Krt8", "Krt14", "Krt15",                                     # epidermis/ epidermal keratins; Kelly et al., 2020; Fernandez-Guerrero et al., 2021 
+                  "Cdh5",                                                       # vasculature @E11.5; Kelly et al., 2020
+                  "Lyz2",                                                       # blood @E11.5; Kelly et al., 2020
+                  "Bcan", "Dsg2", "Esrp1"                                       # epithelial markers; Fernandez-Guerrero et al., 2021 
+                  )
+                  
+# Spatial distribution via marker genes
+goi_spatial <- c("Hoxa9", "Hoxd9", "Shox2",                                     # stylopod-associated genes; Fernandez-Guerrero et al., 2021
+                 "Hoxa11",                                                      # zeugopod-associated genes; Fernandez-Guerrero et al., 2021
+                 "Sall1", "Sall3", "Hoxa13",                                    # autopod-associated genes; Fernandez-Guerrero et al., 2021
+                 "Hoxd11", "Hoxd12", "Hoxd13",                                  # digit patterning; Fernandez-Guerrero et al., 2021
+                 "Fgf8", "Wwc1", "Pdgfa"                                        # AER; Fernandez-Guerrero et al., 2021
+                 )
+
+
+######################## Plots for pre-analysis datasets #######################
+
+##### hindlimb E10.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE10.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/hindlimb_E10.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  p <- FeaturePlot(so_hindlimb_E10.5, gene)
+  plot(p)
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_hindlimb_E10.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E10.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/hindlimb_E10.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  p <- FeaturePlot(so_hindlimb_E10.5, gene)
+  plot(p)
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_hindlimb_E10.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E10.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/hindlimb_E10.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  p <- FeaturePlot(so_hindlimb_E10.5, gene)
+  plot(p)
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_hindlimb_E10.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E10.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+
+##### E11.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE11.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/hindlimb_E11.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_hindlimb_E11.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E11.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_hindlimb_E11.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E11.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/hindlimb_E11.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_hindlimb_E11.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E11.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_hindlimb_E11.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E11.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/hindlimb_E11.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_hindlimb_E11.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E11.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_hindlimb_E11.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E11.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+
+##### hindlimb E13.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE13.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/hindlimb_E13.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_hindlimb_E13.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E13.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_hindlimb_E13.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E13.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/hindlimb_E13.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_hindlimb_E13.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E13.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_hindlimb_E13.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E13.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/hindlimb_E13.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_hindlimb_E13.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E13.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_hindlimb_E13.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E13.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+
+##### hindlimb E15.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE15.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/hindlimb_E15.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_hindlimb_E15.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E15.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_hindlimb_E15.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E15.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/hindlimb_E15.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_hindlimb_E15.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E15.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_hindlimb_E15.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E15.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/hindlimb_E15.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_hindlimb_E15.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E15.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_hindlimb_E15.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E15.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+
+##### hindlimb E18.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE18.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/hindlimb_E18.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_hindlimb_E18.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E18.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_hindlimb_E18.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E18.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/hindlimb_E18.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_hindlimb_E18.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E18.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_hindlimb_E18.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E18.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/hindlimb_E18.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_hindlimb_E18.5[["SCT"]])) {
+    p <- FeaturePlot(so_hindlimb_E18.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_hindlimb_E18.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/hindlimb_E18.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+
+##### midface E9.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE9.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_midface_E9.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E9.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_midface_E9.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_midface_E9.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E9.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_midface_E9.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_midface_E9.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E9.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_midface_E9.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+
+##### midface E10.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE10.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_midface_E10.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E10.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_midface_E10.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_midface_E10.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E10.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_midface_E10.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_midface_E10.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E10.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_midface_E10.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+
+##### midface E11.5
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE11.5/"
+
+# UMAP of goi
+out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_midface_E11.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E11.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi
+p <- FeaturePlot(so_midface_E11.5, features = goi,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_celltype
+out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_celltype.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_midface_E11.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E11.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_celltype
+p <- FeaturePlot(so_midface_E11.5, features = goi_celltype,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
+# UMAP of goi_spatial
+out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_spatial.pdf", sep = "")
+pdf(out_file, width = 7, height = 5)
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_midface_E11.5[["SCT"]])) {
+    p <- FeaturePlot(so_midface_E11.5, features = gene)
+    print(p)
+  } else {
+    message(paste("Gene", gene, "not found in dataset. Skipping."))
+  }
+}
+dev.off()
+
+# Multipannel UMAP of goi_spatial
+p <- FeaturePlot(so_midface_E11.5, features = goi_spatial,
+                 cols = c('lightgray', 'blue'),
+                 pt.size = 0.01)   # Adjust pt.size to your desired value
+out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
+pdf(out_file, width = 25, height = 20)
+plot(p)
+dev.off()
+
