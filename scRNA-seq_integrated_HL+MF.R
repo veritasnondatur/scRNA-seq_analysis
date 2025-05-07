@@ -3427,7 +3427,7 @@ so_mandible_E9.5_E10.5_E11.5_integrated <- RunPCA(so_mandible_E9.5_E10.5_E11.5_i
 
 # Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
 p <- ElbowPlot(so_mandible_E9.5_E10.5_E11.5_integrated, ndims = 20)
-out_path <- paste(output_folder, "integrated_hindlimb_E10.5_E11.5_E13.5_E15.5_E18.5.data.qc.ellbowplot.pdf", sep = "")
+out_path <- paste(output_folder, "integrated_mandible_E9.5_E10.5_E11.5.data.qc.ellbowplot.pdf", sep = "")
 pdf(out_path, width = 5, height = 5)
 plot(p)
 dev.off()
@@ -3536,6 +3536,301 @@ for (gene in goi_spatial) {
   if (gene %in% rownames(so_mandible_E9.5_E10.5_E11.5_integrated)) {
     # Plot only if the gene is found in the Seurat object
     p <- FeaturePlot(so_mandible_E9.5_E10.5_E11.5_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+
+################################################################################
+##### INTEGRATION OF MANDIBLE E9.5-E11.5 WITH HINDLIMB E10.5-E13.5 DATASETS ####
+
+# Load libraries
+library(Seurat)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(reticulate)
+
+# Define output folder (for results)
+output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/hindlimb_integration/"
+
+# Load raw data (pre-processed Seurat objects produced above)
+so_mandible_E9.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_mandibleE9.5/so_mandible_E9.5.rds")
+so_mandible_E10.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_mandibleE10.5/so_mandible_E10.5.rds")
+so_mandible_E11.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_mandibleE11.5/so_mandible_E11.5.rds")
+so_hindlimb_E10.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE10.5/so_hindlimb_E10.5.rds")
+so_hindlimb_E11.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE11.5/so_hindlimb_E11.5.rds")
+so_hindlimb_E13.5 <- readRDS("~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE13.5/so_hindlimb_E13.5.rds")
+
+# Change the default assay to "SCT"
+DefaultAssay(so_mandible_E9.5) <- "SCT"
+DefaultAssay(so_mandible_E10.5) <- "SCT"
+DefaultAssay(so_mandible_E11.5) <- "SCT"
+DefaultAssay(so_hindlimb_E10.5) <- "SCT"
+DefaultAssay(so_hindlimb_E11.5) <- "SCT"
+DefaultAssay(so_hindlimb_E13.5) <- "SCT"
+
+# Check memory usage before and after merge (due to Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
+pryr::mem_used()
+
+# Identify variable features for both datasets
+so_mandible_E9.5 <- FindVariableFeatures(so_mandible_E9.5, 
+                                         selection.method = "vst", 
+                                         nfeatures = 2000)
+so_mandible_E10.5 <- FindVariableFeatures(so_mandible_E10.5, 
+                                          selection.method = "vst", 
+                                          nfeatures = 2000)
+so_mandible_E11.5 <- FindVariableFeatures(so_mandible_E11.5, 
+                                          selection.method = "vst", 
+                                          nfeatures = 2000)
+so_hindlimb_E10.5 <- FindVariableFeatures(so_hindlimb_E10.5, 
+                                          selection.method = "vst", 
+                                          nfeatures = 2000)
+so_hindlimb_E11.5 <- FindVariableFeatures(so_hindlimb_E11.5, 
+                                          selection.method = "vst", 
+                                          nfeatures = 2000)
+so_hindlimb_E13.5 <- FindVariableFeatures(so_hindlimb_E13.5, 
+                                          selection.method = "vst", 
+                                          nfeatures = 2000)
+
+
+# Select integration features
+SelectIntegrationFeatures(object.list = list(so_mandible_E9.5, 
+                                             so_mandible_E10.5, 
+                                             so_mandible_E11.5,
+                                             so_hindlimb_E10.5, 
+                                             so_hindlimb_E11.5, 
+                                             so_hindlimb_E13.5),
+                          nfeatures = 2000,
+                          verbose = TRUE)
+
+# Step 1: Get the variable features for both datasets
+var_features_E9.5 <- so_mandible_E9.5@assays[["SCT"]]@var.features
+var_features_E10.5 <- so_mandible_E10.5@assays[["SCT"]]@var.features
+var_features_E11.5 <- so_mandible_E11.5@assays[["SCT"]]@var.features
+var_features_E10.5 <- so_hindlimb_E10.5@assays[["SCT"]]@var.features
+var_features_E11.5 <- so_hindlimb_E11.5@assays[["SCT"]]@var.features
+var_features_E13.5 <- so_hindlimb_E13.5@assays[["SCT"]]@var.features
+
+# Step 2: Find the common variable features between the two datasets
+common_var_features <- Reduce(intersect, list(var_features_E9.5, 
+                                              var_features_E10.5, 
+                                              var_features_E11.5,
+                                              var_features_E10.5, 
+                                              var_features_E11.5, 
+                                              var_features_E13.5))
+
+# Step 3: Prepare the objects for integration using the common features
+objects <- list(so_mandible_E9.5, 
+                so_mandible_E10.5, 
+                so_mandible_E11.5,
+                so_hindlimb_E10.5, 
+                so_hindlimb_E11.5, 
+                so_hindlimb_E13.5)
+
+# Prepare objects for integration
+objects <- PrepSCTIntegration(object.list = objects,
+                              anchor.features = common_var_features,
+                              verbose = TRUE)
+
+# Step 4: Find integration anchors - make sure to specify the common features
+anchors <- FindIntegrationAnchors(object.list = objects, 
+                                  normalization.method = "SCT", 
+                                  dims = 1:10, 
+                                  anchor.features = common_var_features,  # explicitly specify the features
+                                  k.anchor = 3,
+                                  verbose = TRUE)
+
+# Clear objects from workspace or clear all/close R and retrieve saved IntegrationAnchorSet
+# [necessary due to Memory capacity error]
+rm(so_mandible_E9.5)
+rm(so_mandible_E10.5)
+rm(so_mandible_E11.5)
+rm(so_hindlimb_E10.5)
+rm(so_hindlimb_E11.5)
+rm(so_hindlimb_E13.5)
+rm(objects)
+
+# Step 5: Integrate the datasets using the found anchors
+so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated <- IntegrateData(anchorset = anchors, 
+                                                                                 normalization.method = "SCT",
+                                                                                 dims = 1:10)
+
+# Step 6: Perform scaling and PCA on the integrated data
+so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated <- ScaleData(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated)
+so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated <- RunPCA(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, verbose = FALSE)
+
+# Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
+p <- ElbowPlot(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, ndims = 20)
+out_path <- paste(output_folder, "integrated_mandible_E9.5-E11.5_hindlimb_E10.5-E13.5.data.qc.ellbowplot.pdf", sep = "")
+pdf(out_path, width = 5, height = 5)
+plot(p)
+dev.off()
+
+# Store number of principle components in new variable (to be used later)
+pca_dim_sel <- 8
+
+# Perform UMAP on integrated data
+so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated <- RunUMAP(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, 
+                                                                           dims = 1:pca_dim_sel, 
+                                                                           reduction = "pca", 
+                                                                           reduction.name = "umap.integrated")
+
+# Change the default assay to "SCT" (normalized dataset)
+DefaultAssay(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated) <- "SCT"
+
+# Clustering (Leiden) - Seurat v5 should work similarly
+so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated <- FindNeighbors(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated,
+                                                                                 dims = 1:pca_dim_sel)
+so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated <- FindClusters(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated,
+                                                                                resolution = 0.4,
+                                                                                algorithm = 4,
+                                                                                graph.name = "integrated_snn")
+
+# Visualize datasets as UMAP after Integration
+p <- DimPlot(so_so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, 
+             reduction = "umap.integrated", 
+             group.by = c("orig.ident", "seurat_clusters"))
+outFile <- paste(output_folder, "/integrated_mandible_E9.5-E11.5_hindlimb_E10.5-E13.5.UMAP.orig.ident.clusters.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+p <- DimPlot(object = so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             split.by = 'orig.ident',
+             label = TRUE)
+outFile <- paste(output_folder, "/integrated_mandible_E9.5-E11.5_hindlimb_E10.5-E13.5.UMAP.orig.ident.clusters_split.pdf", sep = "")
+pdf(outFile, width = 20, height = 5)
+plot(p)
+dev.off()
+
+
+# Save the Seurat object
+outFile <- paste(output_folder, "so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated.rds", sep = "")
+saveRDS(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, file = outFile)
+
+
+######## Visualize as FeaturePlot
+
+# Change the default assay to "SCT"
+DefaultAssay(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated) <- "SCT"
+
+# Set the desired order of orig.ident
+so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated$orig.ident <- factor(
+  so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated$orig.ident,
+  levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5", 
+             "hindlimb_E10.5", "hindlimb_E11.5", "hindlimb_E13.5")
+)
+
+### UMAP Plots for goi
+outFile <- paste(output_folder,
+                 "/integrated_mandible_E9.5-E11.5_hindlimb_E10.5-E13.5.UMAP.goi.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 25, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+# Violin Plot for goi
+so <- so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated
+
+# Ensure clusters are identities
+Idents(so) <- "seurat_clusters"
+
+# Create composite cluster + sample identity
+so$cluster_identity <- paste0("Cluster_", Idents(so), "_", so$orig.ident)
+
+# Get all unique combinations, sorted by desired sample order and cluster
+sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5", 
+                  "hindlimb_E10.5", "hindlimb_E11.5", "hindlimb_E13.5")
+
+# Build desired factor levels
+all_combos <- expand.grid(
+  cluster = sort(unique(Idents(so))),
+  sample = sample_order
+)
+cluster_levels <- paste0("Cluster_", all_combos$cluster, "_", all_combos$sample)
+
+# Set the cluster_identity as a factor with desired order
+so$cluster_identity <- factor(so$cluster_identity, levels = cluster_levels)
+
+outFile <- paste(output_folder,
+                 "/integrated_mandible_E9.5-E11.5_hindlimb_E10.5-E13.5.Violin.goi.by.cluster.and.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 25, height = 6)
+
+for (gene in goi) {
+  if (gene %in% rownames(so)) {
+    p <- VlnPlot(
+      so,
+      features = gene,
+      group.by = "cluster_identity",
+      pt.size = 0.1
+    ) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    print(p)
+  } else {
+    message(paste("Gene not found in data:", gene))
+  }
+}
+
+dev.off()
+
+
+### UMAP Plots for goi_celltype
+outFile <- paste(output_folder,
+                 "/integrated_mandible_E9.5-E11.5_hindlimb_E10.5-E13.5.UMAP.goi_celltype.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 25, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+### UMAP Plots for goi_spatial
+outFile <- paste(output_folder,
+                 "/integrated_mandible_E9.5-E11.5_hindlimb_E10.5-E13.5.UMAP.goi_spatial.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 25, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_E9.5_E10.5_E11.5_hindlimb_E10.5_E11.5_E13.5_integrated, 
                      features = gene,
                      reduction = "umap.integrated",
                      split.by = "orig.ident")
