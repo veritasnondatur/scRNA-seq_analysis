@@ -4023,7 +4023,7 @@ DefaultAssay(so_mandible_hindlimb_integrated) <- "SCT"
 so_mandible_hindlimb_integrated <- FindNeighbors(so_mandible_hindlimb_integrated,
                                                  dims = 1:pca_dim_sel)
 so_mandible_hindlimb_integrated <- FindClusters(so_mandible_hindlimb_integrated,
-                                                resolution = 0.8,
+                                                resolution = 0.3,
                                                 algorithm = 4,
                                                 graph.name = "integrated_snn")
 
@@ -4055,9 +4055,10 @@ saveRDS(so_mandible_hindlimb_integrated, file = outFile)
 so_mandible_hindlimb_integrated <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/hindlimb+midface_integration/analysis/so_mandible_hindlimb_integrated.rds")
 
 
-######## Visualize as FeaturePlot
+######## Visualizations
 
 ### GOI for TALE-HD/Hand2/Hox cluster, cell type and spatial distribution
+
 # TALE-HD, Hand2 and Hox expression
 goi <- c("Pbx1", "Pbx2", "Pbx3", "Hand2", "Irx3","Irx5", "Meis1", "Meis2",      # TALE-HD and Hand2
          "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7",         # Hox cluster genes
@@ -4091,9 +4092,9 @@ DefaultAssay(so_mandible_hindlimb_integrated) <- "SCT"
 so_mandible_hindlimb_integrated$orig.ident <- factor(
   so_mandible_hindlimb_integrated$orig.ident,
   levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5", 
-             "hindlimb_E10.5", "hindlimb_E11.5", "hindlimb_E12.5_autopod", 
-             "hindlimb_E12.5_stylopod", "hindlimb_E12.5_stylopod_zeugopod",
-             "hindlimb_E13.5", "hindlimb_E13.5_autopod", 
+             "hindlimb_E10.5", "hindlimb_E11.5", "stylopod_zeugopod_E12.5",
+             "stylopod_E12.5", "autopod_E12.5", 
+             "hindlimb_E13.5", "autopod_E13.5", 
              "hindlimb_E15.5", "hindlimb_E18.5")
 )
 
@@ -4130,9 +4131,9 @@ so$cluster_identity <- paste0("Cluster_", Idents(so), "_", so$orig.ident)
 
 # Get all unique combinations, sorted by desired sample order and cluster
 sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5", 
-                  "hindlimb_E10.5", "hindlimb_E11.5", "hindlimb_E12.5_autopod", 
-                  "hindlimb_E12.5_stylopod", "hindlimb_E12.5_stylopod_zeugopod",
-                  "hindlimb_E13.5", "hindlimb_E13.5_autopod", 
+                  "hindlimb_E10.5", "hindlimb_E11.5", "stylopod_zeugopod_E12.5",
+                  "stylopod_E12.5", "autopod_E12.5", 
+                  "hindlimb_E13.5", "autopod_E13.5", 
                   "hindlimb_E15.5", "hindlimb_E18.5")
 
 # Build desired factor levels
