@@ -3843,3 +3843,371 @@ for (gene in goi_spatial) {
 
 dev.off()
 
+
+################################################################################
+###################### INTEGRATION OF DATASETS ON WYNTON #######################
+
+# Load libraries
+library(Seurat)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(reticulate)
+
+# Set output path
+output_folder <- "/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/hindlimb+midface_integration/analysis/"
+
+# Load Seurat objects from each pre-analysis folder
+so_hindlimb_E10.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE10.5/so_hindlimb_E10.5.rds")
+so_hindlimb_E11.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE11.5/so_hindlimb_E11.5.rds")
+so_hindlimb_E12.5_autopod <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE12.5_autopod/so_autopod_E12.5.rds")
+so_hindlimb_E12.5_stylopod <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE12.5_stylopod/so_stylopod_E12.5.rds")
+so_hindlimb_E12.5_stylopod_zeugopod <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE12.5_stylopod_zeugopod/so_stylopod_zeugopod_E12.5.rds")
+so_hindlimb_E13.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE13.5/so_hindlimb_E13.5.rds")
+so_hindlimb_E13.5_autopod <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE13.5_autopod/so_autopod_E13.5.rds")
+so_hindlimb_E15.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE15.5/so_hindlimb_E15.5.rds")
+so_hindlimb_E18.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_hindlimbE18.5/so_hindlimb_E18.5.rds")
+
+#so_midface_E9.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE9.5/so_midface_E9.5.rds")
+#so_midface_E10.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE10.5/so_midface_E10.5.rds")
+#so_midface_E11.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE11.5/so_midface_E11.5.rds")
+
+so_mandible_E9.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_mandibleE9.5/so_mandible_E9.5.rds")
+so_mandible_E10.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_mandibleE10.5/so_mandible_E10.5.rds")
+so_mandible_E11.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre-analysis_mandibleE11.5/so_mandible_E11.5.rds")
+
+# Change the default assay to "SCT"
+DefaultAssay(so_hindlimb_E10.5) <- "SCT"
+DefaultAssay(so_hindlimb_E11.5) <- "SCT"
+DefaultAssay(so_hindlimb_E12.5_autopod) <- "SCT"
+DefaultAssay(so_hindlimb_E12.5_stylopod) <- "SCT"
+DefaultAssay(so_hindlimb_E12.5_stylopod_zeugopod) <- "SCT"
+DefaultAssay(so_hindlimb_E13.5) <- "SCT"
+DefaultAssay(so_hindlimb_E13.5_autopod) <- "SCT"
+DefaultAssay(so_hindlimb_E15.5) <- "SCT"
+DefaultAssay(so_hindlimb_E18.5) <- "SCT"
+
+#DefaultAssay(so_midface_E9.5) <- "SCT"
+#DefaultAssay(so_midface_E10.5) <- "SCT"
+#DefaultAssay(so_midface_E11.5) <- "SCT"
+
+DefaultAssay(so_mandible_E9.5) <- "SCT"
+DefaultAssay(so_mandible_E10.5) <- "SCT"
+DefaultAssay(so_mandible_E11.5) <- "SCT"
+
+# Check memory usage before and after merge (due to Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
+pryr::mem_used()
+
+# Identify variable features for all datasets
+so_hindlimb_E10.5 <- FindVariableFeatures(so_hindlimb_E10.5, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E11.5 <- FindVariableFeatures(so_hindlimb_E11.5, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E12.5_autopod <- FindVariableFeatures(so_hindlimb_E12.5_autopod, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E12.5_stylopod <- FindVariableFeatures(so_hindlimb_E12.5_stylopod, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E12.5_stylopod_zeugopod <- FindVariableFeatures(so_hindlimb_E12.5_stylopod_zeugopod, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E13.5 <- FindVariableFeatures(so_hindlimb_E13.5, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E13.5_autopod <- FindVariableFeatures(so_hindlimb_E13.5_autopod, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E15.5 <- FindVariableFeatures(so_hindlimb_E15.5, selection.method = "vst", nfeatures = 2000)
+so_hindlimb_E18.5 <- FindVariableFeatures(so_hindlimb_E18.5, selection.method = "vst", nfeatures = 2000)
+
+#so_midface_E9.5 <- FindVariableFeatures(so_midface_E9.5, selection.method = "vst", nfeatures = 2000)
+#so_midface_E10.5 <- FindVariableFeatures(so_midface_E10.5, selection.method = "vst", nfeatures = 2000)
+#so_midface_E11.5 <- FindVariableFeatures(so_midface_E11.5, selection.method = "vst", nfeatures = 2000)
+
+so_mandible_E9.5 <- FindVariableFeatures(so_mandible_E9.5, selection.method = "vst", nfeatures = 2000)
+so_mandible_E10.5 <- FindVariableFeatures(so_mandible_E10.5, selection.method = "vst", nfeatures = 2000)
+so_mandible_E11.5 <- FindVariableFeatures(so_mandible_E11.5, selection.method = "vst", nfeatures = 2000)
+
+# Select integration features
+SelectIntegrationFeatures(object.list = list(so_hindlimb_E10.5,
+                                             so_hindlimb_E11.5,
+                                             so_hindlimb_E12.5_autopod,
+                                             so_hindlimb_E12.5_stylopod,
+                                             so_hindlimb_E12.5_stylopod_zeugopod,
+                                             so_hindlimb_E13.5,
+                                             so_hindlimb_E13.5_autopod,
+                                             so_hindlimb_E15.5,
+                                             so_hindlimb_E18.5,
+                                             #so_midface_E9.5,
+                                             #so_midface_E10.5,
+                                             #so_midface_E11.5,
+                                             so_mandible_E9.5,
+                                             so_mandible_E10.5,
+                                             so_mandible_E11.5),
+                          nfeatures = 2000,
+                          verbose = TRUE)
+
+# Step 1: Get the variable features for all datasets
+var_features_hindlimb_E10.5 <- so_hindlimb_E10.5@assays[["SCT"]]@var.features
+var_features_hindlimb_E11.5 <- so_hindlimb_E11.5@assays[["SCT"]]@var.features
+var_features_hindlimb_E12.5_autopod <- so_hindlimb_E12.5_autopod@assays[["SCT"]]@var.features
+var_features_hindlimb_E12.5_stylopod <- so_hindlimb_E12.5_stylopod@assays[["SCT"]]@var.features
+var_features_hindlimb_E12.5_stylopod_zeugopod <- so_hindlimb_E12.5_stylopod_zeugopod@assays[["SCT"]]@var.features
+var_features_hindlimb_E13.5 <- so_hindlimb_E13.5@assays[["SCT"]]@var.features
+var_features_hindlimb_E13.5_autopod <- so_hindlimb_E13.5_autopod@assays[["SCT"]]@var.features
+var_features_hindlimb_E15.5 <- so_hindlimb_E15.5@assays[["SCT"]]@var.features
+var_features_hindlimb_E18.5 <- so_hindlimb_E18.5@assays[["SCT"]]@var.features
+var_features_mandible_E9.5 <- so_mandible_E9.5@assays[["SCT"]]@var.features
+var_features_mandible_E10.5 <- so_mandible_E10.5@assays[["SCT"]]@var.features
+var_features_mandible_E11.5 <- so_mandible_E11.5@assays[["SCT"]]@var.features
+
+# Step 2: Find the common variable features between all datasets
+common_var_features <- Reduce(intersect, list(var_features_hindlimb_E10.5,
+                                              var_features_hindlimb_E11.5,
+                                              var_features_hindlimb_E12.5_autopod,
+                                              var_features_hindlimb_E12.5_stylopod,
+                                              var_features_hindlimb_E12.5_stylopod_zeugopod,
+                                              var_features_hindlimb_E13.5,
+                                              var_features_hindlimb_E13.5_autopod,
+                                              var_features_hindlimb_E15.5,
+                                              var_features_hindlimb_E18.5,
+                                              var_features_mandible_E9.5,
+                                              var_features_mandible_E10.5,
+                                              var_features_mandible_E11.5))
+
+# Step 3: Prepare the objects for integration using the common features
+objects <- list(so_hindlimb_E10.5,
+                so_hindlimb_E11.5,
+                so_hindlimb_E12.5_autopod,
+                so_hindlimb_E12.5_stylopod,
+                so_hindlimb_E12.5_stylopod_zeugopod,
+                so_hindlimb_E13.5,
+                so_hindlimb_E13.5_autopod,
+                so_hindlimb_E15.5,
+                so_hindlimb_E18.5,
+                so_mandible_E9.5,
+                so_mandible_E10.5,
+                so_mandible_E11.5)
+
+# Prepare objects for integration
+objects <- PrepSCTIntegration(object.list = objects,
+                              anchor.features = common_var_features,
+                              verbose = TRUE)
+
+# Step 4: Find integration anchors - make sure to specify the common features
+anchors <- FindIntegrationAnchors(object.list = objects, 
+                                  normalization.method = "SCT", 
+                                  dims = 1:10, 
+                                  anchor.features = common_var_features,  # explicitly specify the features
+                                  k.anchor = 3,
+                                  verbose = TRUE)
+
+# Step 5: Integrate the datasets using the found anchors
+so_mandible_hindlimb_integrated <- IntegrateData(anchorset = anchors, 
+                                                 normalization.method = "SCT",
+                                                 dims = 1:10)
+
+# Step 6: Perform scaling and PCA on the integrated data
+so_mandible_hindlimb_integrated <- ScaleData(so_mandible_hindlimb_integrated)
+so_mandible_hindlimb_integrated <- RunPCA(so_mandible_hindlimb_integrated, verbose = FALSE)
+
+# Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
+p <- ElbowPlot(so_mandible_hindlimb_integrated, ndims = 20)
+out_path <- paste(output_folder, "integrated_mandible_hindlimb.data.qc.ellbowplot.pdf", sep = "")
+pdf(out_path, width = 5, height = 5)
+plot(p)
+dev.off()
+
+# Store number of principle components in new variable (to be used later)
+pca_dim_sel <- 8
+
+# Perform UMAP on integrated data
+so_mandible_hindlimb_integrated <- RunUMAP(so_mandible_hindlimb_integrated,
+                                           dims = 1:pca_dim_sel, 
+                                           reduction = "pca", 
+                                           reduction.name = "umap.integrated")
+
+# Change the default assay to "SCT" (normalized dataset)
+DefaultAssay(so_mandible_hindlimb_integrated) <- "SCT"
+
+# Clustering (Leiden) - Seurat v5 should work similarly
+so_mandible_hindlimb_integrated <- FindNeighbors(so_mandible_hindlimb_integrated,
+                                                 dims = 1:pca_dim_sel)
+so_mandible_hindlimb_integrated <- FindClusters(so_mandible_hindlimb_integrated,
+                                                resolution = 0.8,
+                                                algorithm = 4,
+                                                graph.name = "integrated_snn")
+
+# Visualize datasets as UMAP after Integration
+p <- DimPlot(so_mandible_hindlimb_integrated, 
+             reduction = "umap.integrated", 
+             group.by = c("orig.ident", "seurat_clusters"))
+outFile <- paste(output_folder, "/integrated_mandible_hindlimb.UMAP.orig.ident.clusters.pdf", sep = "")
+pdf(outFile, width = 12, height = 5)
+plot(p)
+dev.off()
+
+p <- DimPlot(object = so_mandible_hindlimb_integrated,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             split.by = 'orig.ident',
+             label = TRUE)
+outFile <- paste(output_folder, "/integrated_mandible_hindlimb.UMAP.orig.ident.clusters_split.pdf", sep = "")
+pdf(outFile, width = 50, height = 5)
+plot(p)
+dev.off()
+
+
+# Save the Seurat object
+outFile <- paste(output_folder, "so_mandible_hindlimb_integrated.rds", sep = "")
+saveRDS(so_mandible_hindlimb_integrated, file = outFile)
+
+# Load data
+so_mandible_hindlimb_integrated <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/hindlimb+midface_integration/analysis/so_mandible_hindlimb_integrated.rds")
+
+
+######## Visualize as FeaturePlot
+
+### GOI for TALE-HD/Hand2/Hox cluster, cell type and spatial distribution
+# TALE-HD, Hand2 and Hox expression
+goi <- c("Pbx1", "Pbx2", "Pbx3", "Hand2", "Irx3","Irx5", "Meis1", "Meis2",      # TALE-HD and Hand2
+         "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7",         # Hox cluster genes
+         "Hoxa9", "Hoxa10", "Hoxa11", "Hoxa13", "Hoxd13")
+
+# Celltype-clusters via marker genes
+goi_celltype <- c("Lin28a", "Sall4", "Fzd7",                                    # undifferentiated cells; Fernandez-Guerrero et al., 2021
+                  "Bmp2", "Col2a1", "Sox9",                                     # chondrogenic differentiation and limb skeletal, digit and joint morphogenesis; Fernandez-Guerrero et al., 2021
+                  "Runx2", "Dlx5", "Sp7",                                       # osteoblast progenitor and differentiation marker 
+                  "Alx3", "Alx4",                                               # proximal anterior mesoderm; Fernandez-Guerrero et al., 2021                                             # autopod-associated genes; Fernandez-Guerrero et al., 2021
+                  "Asb4",                                                       # distal anterior mesoderm; Fernandez-Guerrero et al., 2021 
+                  "Krt8", "Krt14", "Krt15",                                     # epidermis/ epidermal keratins; Kelly et al., 2020; Fernandez-Guerrero et al., 2021 
+                  "Cdh5",                                                       # vasculature @E11.5; Kelly et al., 2020
+                  "Lyz2",                                                       # blood @E11.5; Kelly et al., 2020
+                  "Bcan", "Dsg2", "Esrp1"                                       # epithelial markers; Fernandez-Guerrero et al., 2021 
+)
+
+# Spatial distribution via marker genes
+goi_spatial <- c("Hoxa9", "Hoxd9", "Shox2",                                     # stylopod-associated genes; Fernandez-Guerrero et al., 2021
+                 "Hoxa11",                                                      # zeugopod-associated genes; Fernandez-Guerrero et al., 2021
+                 "Sall1", "Sall3", "Hoxa13",                                    # autopod-associated genes; Fernandez-Guerrero et al., 2021
+                 "Hoxd11", "Hoxd12", "Hoxd13",                                  # digit patterning; Fernandez-Guerrero et al., 2021
+                 "Fgf8", "Wwc1", "Pdgfa"                                        # AER; Fernandez-Guerrero et al., 2021
+)
+
+
+# Change the default assay to "SCT"
+DefaultAssay(so_mandible_hindlimb_integrated) <- "SCT"
+
+# Set the desired order of orig.ident
+so_mandible_hindlimb_integrated$orig.ident <- factor(
+  so_mandible_hindlimb_integrated$orig.ident,
+  levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5", 
+             "hindlimb_E10.5", "hindlimb_E11.5", "hindlimb_E12.5_autopod", 
+             "hindlimb_E12.5_stylopod", "hindlimb_E12.5_stylopod_zeugopod",
+             "hindlimb_E13.5", "hindlimb_E13.5_autopod", 
+             "hindlimb_E15.5", "hindlimb_E18.5")
+)
+
+### UMAP Plots for goi
+outFile <- paste(output_folder,
+                 "/integrated_mandible_hindlimb.UMAP.goi.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 50, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_mandible_hindlimb_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_hindlimb_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+# Violin Plot for goi
+so <- so_mandible_hindlimb_integrated
+
+# Ensure clusters are identities
+Idents(so) <- "seurat_clusters"
+
+# Create composite cluster + sample identity
+so$cluster_identity <- paste0("Cluster_", Idents(so), "_", so$orig.ident)
+
+# Get all unique combinations, sorted by desired sample order and cluster
+sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5", 
+                  "hindlimb_E10.5", "hindlimb_E11.5", "hindlimb_E12.5_autopod", 
+                  "hindlimb_E12.5_stylopod", "hindlimb_E12.5_stylopod_zeugopod",
+                  "hindlimb_E13.5", "hindlimb_E13.5_autopod", 
+                  "hindlimb_E15.5", "hindlimb_E18.5")
+
+# Build desired factor levels
+all_combos <- expand.grid(
+  cluster = sort(unique(Idents(so))),
+  sample = sample_order
+)
+cluster_levels <- paste0("Cluster_", all_combos$cluster, "_", all_combos$sample)
+
+# Set the cluster_identity as a factor with desired order
+so$cluster_identity <- factor(so$cluster_identity, levels = cluster_levels)
+
+outFile <- paste(output_folder,
+                 "/integrated_mandible_hindlimb.Violin.goi.by.cluster.and.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 50, height = 6)
+
+for (gene in goi) {
+  if (gene %in% rownames(so)) {
+    p <- VlnPlot(
+      so,
+      features = gene,
+      group.by = "cluster_identity",
+      pt.size = 0.1
+    ) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    print(p)
+  } else {
+    message(paste("Gene not found in data:", gene))
+  }
+}
+
+dev.off()
+
+
+### UMAP Plots for goi_celltype
+outFile <- paste(output_folder,
+                 "/integrated_mandible_hindlimb.UMAP.goi_celltype.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 50, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi_celltype) {
+  if (gene %in% rownames(so_mandible_hindlimb_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_hindlimb_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+### UMAP Plots for goi_spatial
+outFile <- paste(output_folder,
+                 "/integrated_mandible_hindlimb.UMAP.goi_spatial.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 50, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi_spatial) {
+  if (gene %in% rownames(so_mandible_hindlimb_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_hindlimb_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
