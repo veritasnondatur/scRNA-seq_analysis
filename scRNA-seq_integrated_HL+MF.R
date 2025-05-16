@@ -4215,18 +4215,97 @@ dev.off()
 
 ############## Analysis of cell trajectories in integrated dataset #############
 
-# Monocle 3
-library(Seurat)
-library(monocle3)
-
 # Load data
 so_mandible_hindlimb_integrated <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/hindlimb+midface_integration/analysis/so_mandible_hindlimb_integrated.rds")
 
-### Minimal code (ChatGPT) - DOES NOT WORK
-mandible_hindlimb_int_trajectory <- as.cell_data_set(so_mandible_hindlimb_integrated)
-mandible_hindlimb_int_trajectory <- cluster_cells(mandible_hindlimb_int_trajectory)
-mandible_hindlimb_int_trajectory <- learn_graph(mandible_hindlimb_int_trajectory)
-mandible_hindlimb_int_trajectory <- order_cells(mandible_hindlimb_int_trajectory)
+### Minimal code (ChatGPT)
+# Load required libraries
+library(Seurat)
+library(monocle3)
+library(SeuratWrappers)
+library(dplyr)
+
+# Your Seurat object
+seurat_obj <- so_mandible_hindlimb_integrated
+
+#------------------------------------------
+# STEP 1: Convert Seurat to Monocle3 CDS
+#------------------------------------------
+
+# Use SeuratWrappers to convert
+cds <- as.cell_data_set(seurat_obj)
+
+# Optional: copy Seurat cluster info to CDS
+colData(cds)$seurat_clusters <- seurat_obj$seurat_clusters
+
+#------------------------------------------
+# STEP 2: Add UMAP embeddings from Seurat (optional, recommended)
+#------------------------------------------
+
+reducedDims(cds)$UMAP <- Embeddings(seurat_obj, reduction = "umap.integrated")
+
+#------------------------------------------
+# STEP 3: Preprocess CDS
+#------------------------------------------
+
+# Skip this if Seurat already did PCA and you're using its UMAP
+cds <- preprocess_cds(cds, num_dim = 50)
+
+# Optional: run dimension reduction (skip if reusing Seurat UMAP)
+# cds <- reduce_dimension(cds, reduction_method = "UMAP")
+
+#------------------------------------------
+# STEP 4: Cluster Cells (optional)
+#------------------------------------------
+
+# If you want Monocle to assign clusters:
+# cds <- cluster_cells(cds)
+
+# Or use Seurat clusters directly (already in colData)
+
+#------------------------------------------
+# STEP 5: Learn the Trajectory Graph
+#------------------------------------------
+
+cds <- learn_graph(cds)
+
+#------------------------------------------
+# STEP 6: Order Cells (pseudotime)
+#------------------------------------------
+
+# Interactive mode: manually click root node in plot
+# cds <- order_cells(cds)
+
+# OR manually define root cells (e.g., based on known starting cluster)
+# Example: use 10 cells from cluster "0" as root
+root_cells <- colnames(seurat_obj)[seurat_obj$seurat_clusters == "0"][1:10]
+cds <- order_cells(cds, root_cells = root_cells)
+
+#------------------------------------------
+# STEP 7: Plot the Trajectory
+#------------------------------------------
+
+# Plot colored by pseudotime
+plot_cells(cds,
+           color_cells_by = "pseudotime",
+           label_groups_by_cluster = TRUE,
+           label_leaves = TRUE,
+           label_branch_points = TRUE)
+
+# Plot colored by Seurat clusters
+plot_cells(cds,
+           color_cells_by = "seurat_clusters")
+
+#------------------------------------------
+# STEP 8: Add Pseudotime Back to Seurat
+#------------------------------------------
+
+seurat_obj$pseudotime <- pseudotime(cds)
+
+# Now pseudotime is available as metadata for downstream Seurat plots
+FeaturePlot(seurat_obj, features = "pseudotime", reduction = "umap")
+
+
 
 ### Workflow according to Monocle3 documentation 
 #[for C.elegans data, needs to be adapted to my context]
