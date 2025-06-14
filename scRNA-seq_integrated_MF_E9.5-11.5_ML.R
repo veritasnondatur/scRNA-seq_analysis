@@ -733,14 +733,14 @@ pryr::mem_used()
 
 # Identify variable features for both datasets
 so_midface_E9.5 <- FindVariableFeatures(so_midface_E9.5, 
+                                        selection.method = "vst", 
+                                        nfeatures = 2000)
+so_midface_E10.5 <- FindVariableFeatures(so_midface_E10.5, 
                                          selection.method = "vst", 
                                          nfeatures = 2000)
-so_midface_E10.5 <- FindVariableFeatures(so_midface_E10.5, 
-                                          selection.method = "vst", 
-                                          nfeatures = 2000)
 so_midface_E11.5 <- FindVariableFeatures(so_midface_E11.5, 
-                                          selection.method = "vst", 
-                                          nfeatures = 2000)
+                                         selection.method = "vst", 
+                                         nfeatures = 2000)
 
 
 # Select integration features
@@ -787,8 +787,8 @@ rm(objects)
 
 # Step 5: Integrate the datasets using the found anchors
 so_midface_E9.5_E10.5_E11.5_integrated <- IntegrateData(anchorset = anchors, 
-                                                         normalization.method = "SCT",
-                                                         dims = 1:10)
+                                                        normalization.method = "SCT",
+                                                        dims = 1:10)
 
 # Step 6: Perform scaling and PCA on the integrated data
 so_midface_E9.5_E10.5_E11.5_integrated <- ScaleData(so_midface_E9.5_E10.5_E11.5_integrated)
@@ -806,20 +806,20 @@ pca_dim_sel <- 15
 
 # Perform UMAP on integrated data
 so_midface_E9.5_E10.5_E11.5_integrated <- RunUMAP(so_midface_E9.5_E10.5_E11.5_integrated, 
-                                                   dims = 1:pca_dim_sel, 
-                                                   reduction = "pca", 
-                                                   reduction.name = "umap.integrated")
+                                                  dims = 1:pca_dim_sel, 
+                                                  reduction = "pca", 
+                                                  reduction.name = "umap.integrated")
 
 # Change the default assay to "SCT" (normalized dataset)
 DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
 
 # Clustering (Leiden) - Seurat v5 should work similarly
 so_midface_E9.5_E10.5_E11.5_integrated <- FindNeighbors(so_midface_E9.5_E10.5_E11.5_integrated,
-                                                         dims = 1:pca_dim_sel)
+                                                        dims = 1:pca_dim_sel)
 so_midface_E9.5_E10.5_E11.5_integrated <- FindClusters(so_midface_E9.5_E10.5_E11.5_integrated,
-                                                        resolution = 0.5,
-                                                        algorithm = 4,
-                                                        graph.name = "integrated_snn")
+                                                       resolution = 0.5,
+                                                       algorithm = 4,
+                                                       graph.name = "integrated_snn")
 
 # Set the desired order of orig.ident
 so_midface_E9.5_E10.5_E11.5_integrated$orig.ident <- factor(
@@ -865,10 +865,12 @@ so_midface_E9.5_E10.5_E11.5_integrated$orig.ident <- factor(
 
 # Definition of GOI (TFs and Senesence pathway genes)
 goi <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4", "Zfhx3", "Zfhx4",           
-         "Tgfb1", "Smad2", "Smad4", "Smad5",                         # TGF-beta pathway
-         "Mtor", "Akt1",                                             # mTOR pathway
-         "Foxo1", "Foxo3", "Foxo4", "Foxo6",                         # FOXO TFs
-         "Cdkn2a")                                                   # p19ARF
+         "Grhl3", "Snai2", "Tfap2a", "Tfap2b", "Twist1", "Barx1", "Cxxc4", 
+         "Aldh1a2", "Dlx1", "Dlx2", "Sox9",                                     # Marker Genes for Epithelial Seam Cells at the Lambdoidal Junction
+         "Tgfb1", "Smad2", "Smad4", "Smad5",                                    # TGF-beta pathway
+         "Mtor", "Akt1",                                                        # mTOR pathway
+         "Foxo1", "Foxo3", "Foxo4", "Foxo6",                                    # FOXO TFs
+         "Cdkn2a")                                                              # p19ARF
 
 # Change the default assay to "SCT"
 DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
@@ -894,3 +896,73 @@ for (gene in goi) {
 }
 
 dev.off()
+
+# Definition of GOI (TFs and Senesence pathway genes)
+goi_nicotine <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4", "Zfhx3", "Zfhx4",           
+                  "Chrna3", "Chrna5", "Chrnb4",                                 # nAchRs
+                  "Cyp2a5", "Ankk1",                                            # nicotine pathway and metabolism
+                  "Slc6a3", "Slc18a2", "Th", "Ddc", "Drd2")                     # dopamine release
+
+# Change the default assay to "SCT"
+DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
+
+# Plots for goi
+outFile <- paste(output_folder,
+                 "/midface_E9.5_E10.5_E11.5_integrated.UMAP.goi_nicotine.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 20, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi_nicotine) {
+  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+
+##### UMAP Coexpression of Pbx1 and Zfhx3
+# Define a list of gene sets (co-expressed genes)
+gene_set_1 <- list(Coexpression = c("Pbx1",
+                                    "Zfhx3"))
+
+# Add module scores to the Seurat object
+data <- AddModuleScore(so_midface_E9.5_E10.5_E11.5_integrated, 
+                       features = gene_set_1, name = "CoexpressionScore")
+
+# Visualize the module score in UMAP
+p <- FeaturePlot(data, features = "CoexpressionScore1",
+                 pt.size = 0.5) +
+  scale_color_gradient2(low = "red", mid = "white", high = "blue", midpoint = median(data$CoexpressionScore1)) +
+  labs(title = "Co-expression of Pbx1 and Zfhx3 in E9.5-11.5 midface scRNA-seq", 
+       x = "UMAP 1", 
+       y = "UMAP 2", 
+       color = "Co-expression\n(Pbx1, Zfhx3)") +  # Custom legend title
+  theme_minimal()
+outFile <- paste(output_folder, "/midface_E9.5_E10.5_E11.5_integrated.UMAP.coexpressionPbx1+Zfhx3.pdf", sep = "")
+pdf(outFile, width = 10, height = 5)
+plot(p)
+dev.off()
+
+
+### Determine marker genes for each cluster
+so_midface_E9.5_E10.5_E11.5_integrated <- PrepSCTFindMarkers(so_midface_E9.5_E10.5_E11.5_integrated)
+
+markers <- FindAllMarkers(
+  object = so_midface_E9.5_E10.5_E11.5_integrated,
+  only.pos = TRUE,               # Return only positive markers (upregulated in the cluster)
+  min.pct = 0.25,                # Gene expressed in at least 25% of cells in either group
+  logfc.threshold = 0.25         # Minimum log fold change
+)
+
+# Save the marker list to a CSV file
+write.csv(markers, file = "/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/analysis/midface_E9.5_E10.5_E11.5_integrated.markers.csv")
+
