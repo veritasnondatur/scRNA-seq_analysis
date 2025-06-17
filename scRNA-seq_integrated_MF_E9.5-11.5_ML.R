@@ -733,14 +733,14 @@ pryr::mem_used()
 
 # Identify variable features for both datasets
 so_midface_E9.5 <- FindVariableFeatures(so_midface_E9.5, 
-                                        selection.method = "vst", 
-                                        nfeatures = 2000)
+                                         selection.method = "vst", 
+                                         nfeatures = 2000)
 so_midface_E10.5 <- FindVariableFeatures(so_midface_E10.5, 
-                                         selection.method = "vst", 
-                                         nfeatures = 2000)
+                                          selection.method = "vst", 
+                                          nfeatures = 2000)
 so_midface_E11.5 <- FindVariableFeatures(so_midface_E11.5, 
-                                         selection.method = "vst", 
-                                         nfeatures = 2000)
+                                          selection.method = "vst", 
+                                          nfeatures = 2000)
 
 
 # Select integration features
@@ -787,8 +787,8 @@ rm(objects)
 
 # Step 5: Integrate the datasets using the found anchors
 so_midface_E9.5_E10.5_E11.5_integrated <- IntegrateData(anchorset = anchors, 
-                                                        normalization.method = "SCT",
-                                                        dims = 1:10)
+                                                         normalization.method = "SCT",
+                                                         dims = 1:10)
 
 # Step 6: Perform scaling and PCA on the integrated data
 so_midface_E9.5_E10.5_E11.5_integrated <- ScaleData(so_midface_E9.5_E10.5_E11.5_integrated)
@@ -806,20 +806,20 @@ pca_dim_sel <- 15
 
 # Perform UMAP on integrated data
 so_midface_E9.5_E10.5_E11.5_integrated <- RunUMAP(so_midface_E9.5_E10.5_E11.5_integrated, 
-                                                  dims = 1:pca_dim_sel, 
-                                                  reduction = "pca", 
-                                                  reduction.name = "umap.integrated")
+                                                   dims = 1:pca_dim_sel, 
+                                                   reduction = "pca", 
+                                                   reduction.name = "umap.integrated")
 
 # Change the default assay to "SCT" (normalized dataset)
 DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
 
 # Clustering (Leiden) - Seurat v5 should work similarly
 so_midface_E9.5_E10.5_E11.5_integrated <- FindNeighbors(so_midface_E9.5_E10.5_E11.5_integrated,
-                                                        dims = 1:pca_dim_sel)
+                                                         dims = 1:pca_dim_sel)
 so_midface_E9.5_E10.5_E11.5_integrated <- FindClusters(so_midface_E9.5_E10.5_E11.5_integrated,
-                                                       resolution = 0.5,
-                                                       algorithm = 4,
-                                                       graph.name = "integrated_snn")
+                                                        resolution = 0.5,
+                                                        algorithm = 4,
+                                                        graph.name = "integrated_snn")
 
 # Set the desired order of orig.ident
 so_midface_E9.5_E10.5_E11.5_integrated$orig.ident <- factor(
@@ -933,21 +933,23 @@ dev.off()
 # Define a list of gene sets (co-expressed genes)
 gene_set_1 <- list(Coexpression = c("Pbx1",
                                     "Zfhx3"))
+gene_set_2 <- list(Coexpression = c("Pbx2",
+                                    "Zfhx3"))
 
 # Add module scores to the Seurat object
 data <- AddModuleScore(so_midface_E9.5_E10.5_E11.5_integrated, 
-                       features = gene_set_1, name = "CoexpressionScore")
+                       features = gene_set_2, name = "CoexpressionScore")
 
 # Visualize the module score in UMAP
 p <- FeaturePlot(data, features = "CoexpressionScore1",
                  pt.size = 0.5) +
   scale_color_gradient2(low = "red", mid = "white", high = "blue", midpoint = median(data$CoexpressionScore1)) +
-  labs(title = "Co-expression of Pbx1 and Zfhx3 in E9.5-11.5 midface scRNA-seq", 
+  labs(title = "Co-expression of Pbx2 and Zfhx3 in E9.5-11.5 midface scRNA-seq", 
        x = "UMAP 1", 
        y = "UMAP 2", 
-       color = "Co-expression\n(Pbx1, Zfhx3)") +  # Custom legend title
+       color = "Co-expression\n(Pbx2, Zfhx3)") +  # Custom legend title
   theme_minimal()
-outFile <- paste(output_folder, "/midface_E9.5_E10.5_E11.5_integrated.UMAP.coexpressionPbx1+Zfhx3.pdf", sep = "")
+outFile <- paste(output_folder, "/midface_E9.5_E10.5_E11.5_integrated.UMAP.coexpressionPbx2+Zfhx3.pdf", sep = "")
 pdf(outFile, width = 10, height = 5)
 plot(p)
 dev.off()
