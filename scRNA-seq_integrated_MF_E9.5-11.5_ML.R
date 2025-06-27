@@ -903,6 +903,8 @@ goi_nicotine <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4", "Zfhx3", "Zfhx4",
                   "Cyp2a5", "Ankk1",                                            # nicotine pathway and metabolism
                   "Slc6a3", "Slc18a2", "Th", "Ddc", "Drd2")                     # dopamine release
 
+goi_zipp_lambda <- c("Bambi", "Bmp4", "Msx1", "Tgfb2", "Fgf9", "Wnt9a", "Trp63")
+
 # Change the default assay to "SCT"
 DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
 
@@ -913,6 +915,27 @@ outFile <- paste(output_folder,
 pdf(outFile, width = 20, height = 5)
 # Loop through each gene and check if it exists in the Seurat object
 for (gene in goi_nicotine) {
+  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+outFile <- paste(output_folder,
+                 "/midface_E9.5_E10.5_E11.5_integrated.UMAP.goi_zipp_lambda.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 20, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi_zipp_lambda) {
   if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
     # Plot only if the gene is found in the Seurat object
     p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
