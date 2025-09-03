@@ -321,7 +321,7 @@ saveRDS(so_mandible_E10.5, file = "~/Documents/postdoc/collaboration/Pauline/pre
 ###################################  Plots  ####################################
 
 # Define genes of interest (goi)
-goi <- c("Dgkk", "Hand2", "Dlx6")
+goi <- c("Dgkk", "Gpr50", "Hand2", "Dlx6")
 
 
 ################################ Violin plots  #################################
@@ -672,7 +672,7 @@ saveRDS(so_mandible_E9.5_E10.5_E11.5_integrated, file = outFile)
 so_mandible_E9.5_E10.5_E11.5_integrated <- readRDS("~/Documents/postdoc/collaboration/Pauline/mandible_E9.5-11.5_integration/so_mandible_E9.5_E10.5_E11.5_integrated.rds")
 
 # Define genes of interest (goi)
-goi <- c("Dgkk", "Hand2", "Dlx6")
+goi <- c("Dgkk", "Gpr50", "Hand2", "Dlx6")
 
 
 ########################### Violin plots per dataset ###########################
@@ -747,6 +747,28 @@ so_mandible_E9.5_E10.5_E11.5_integrated$orig.ident <- factor(
   levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
 )
 
+# Visualize clusters of integrated dataset as Dimplot
+p <- DimPlot(object = so_mandible_E9.5_E10.5_E11.5_integrated,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             split.by = "orig.ident",
+             label = TRUE)
+out_path <- paste(output_folder, "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.Dimplot.orig.ident.pdf", sep = "")
+pdf(out_path, width = 30, height = 10)
+plot(p)
+dev.off()
+
+# Visualize clusters of integrated dataset as Dimplot
+p <- DimPlot(object = so_mandible_E9.5_E10.5_E11.5_integrated,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             label = TRUE)
+out_path <- paste(output_folder, "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.Dimplot.clusters.pdf", sep = "")
+pdf(out_path, width = 15, height = 10)
+plot(p)
+dev.off()
+
+
 ### UMAP Plots for goi
 outFile <- paste(output_folder,
                  "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.goi.orig.ident.pdf", 
@@ -764,6 +786,88 @@ for (gene in goi) {
   } else {
     # Print a message for missing genes (optional)
     message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+### UMAP Plots for goi
+outFile <- paste(output_folder,
+                 "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.goi.pdf", 
+                 sep = "")
+pdf(outFile, width = 15, height = 10)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_mandible_E9.5_E10.5_E11.5_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_E9.5_E10.5_E11.5_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+
+### Combinatory plots
+# Hand2 + Dgkk
+p1 <- FeaturePlot(
+  so_mandible_E9.5_E10.5_E11.5_integrated,
+  features = c("Hand2", "Dgkk"),
+  reduction = "umap.integrated",
+  blend = TRUE,                  # blend colors
+  cols = c("grey90", "blue", "magenta"),
+  order = TRUE                   # plot higher expressers on top
+)
+
+# Dlx6 + Dgkk
+p2 <- FeaturePlot(
+  so_mandible_E9.5_E10.5_E11.5_integrated,
+  features = c("Dlx6", "Dgkk"),
+  reduction = "umap.integrated",
+  blend = TRUE,
+  cols = c("grey90", "blue", "magenta"),
+  order = TRUE
+)
+
+# Save to PDF
+outFile <- paste0(output_folder, "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.Hand2_Dlx6_Dgkk.pdf")
+pdf(outFile, width = 25, height = 7)
+print(p1)
+print(p2)
+dev.off()
+
+
+### Overlaps at each timepoint separated
+# Define pairs of interest
+gene_pairs <- list(
+  c("Hand2", "Dgkk"),
+  c("Dlx6", "Dgkk")
+)
+
+# Output file
+outFile <- paste0(output_folder,
+                  "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.Hand2_Dlx6_Dgkk.orig.ident.pdf")
+pdf(outFile, width = 20, height = 10)
+
+for (pair in gene_pairs) {
+  if (all(pair %in% rownames(so_mandible_E9.5_E10.5_E11.5_integrated))) {
+    p <- FeaturePlot(
+      so_mandible_E9.5_E10.5_E11.5_integrated,
+      features = pair,
+      reduction = "umap.integrated",
+      blend = TRUE,
+      cols = c("grey90", "blue", "magenta"),
+      order = TRUE,
+      split.by = "orig.ident"
+    )
+    print(p)
+  } else {
+    message(paste("One or both genes not found in data: ", paste(pair, collapse = ", ")))
   }
 }
 
