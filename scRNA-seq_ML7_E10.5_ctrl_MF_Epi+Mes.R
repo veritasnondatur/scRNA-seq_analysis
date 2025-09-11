@@ -45,10 +45,10 @@ dev.off()
 
 ### Selecting cells for further analysis
 percent.mt_max <- 5          # maximum percentage of mitochondrial genes (adjust as needed)
-nFeature_RNA_min <- 3000      # minimum number of features per cell
+nFeature_RNA_min <- 1000      # minimum number of features per cell
 nFeature_RNA_max <- 10000     # minimum number of features per cell
-nCount_RNA_min <- 10000        # minimum number of RNA counts per cell
-nCount_RNA_max <- 30000      # maximum number of RNA counts per cell
+nCount_RNA_min <- 1000        # minimum number of RNA counts per cell
+nCount_RNA_max <- 50000      # maximum number of RNA counts per cell
 
 # Subset the Seurat object (filter based on thresholds above)
 so_midface_Epi_Mes_E10.5 <- subset(so_midface_Epi_Mes_E10.5,
@@ -143,7 +143,7 @@ plot(p)
 dev.off()
 
 # Number of features selection by elbow method
-pca_dim_sel <- 14   
+pca_dim_sel <- 8   
 
 #UMAP
 so_midface_Epi_Mes_E10.5 <- RunUMAP(so_midface_Epi_Mes_E10.5, dims = 1:pca_dim_sel)
@@ -180,13 +180,15 @@ saveRDS(so_midface_Epi_Mes_E10.5, file = "/Users/veralaub/Documents/postdoc/bioi
 ###################################  Plots  ####################################
 
 # Define genes of interest (goi) to mark Epi+Mes and BMP-signalling pathway
-goi <- c("Epcam",                                                               # Epithelial markers
-         "Vim", "Pdgfra", "Twist1", "Prrx1","Prrx2", "Dlx5","Dlx6","Osr2",      # Mesenchymal markers
+goi <- c("Epcam", "Krt18",                                                      # Epithelial markers
+         "Pdgfra", "Twist1", "Prrx1","Prrx2", "Snai1", "Alx4", "Col13a1",                              # Mesenchymal markers
          "Bmp4", "Bmpr1a", "Bmpr1b", "Bmpr2",                                   # BMP signalling
          "Smad1", "Smad2", "Smad4", "Smad5",
          "Id1", "Id2", "Id3",
-         "Msx1", "Msx2",
-         "Runx2")
+         "Dcx",                                                                 # neurblast marker
+         "Sox2",                                                                # neuro-epithelium
+         "Sox10"                                                                # neural crest
+         )
 
 
 ################################ Violin plots  #################################
@@ -232,654 +234,136 @@ for (gene in goi) {
 
 dev.off()
 
-
-################################################################################
-# Load data
-so_midface_Epi_Mes_E10.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/scRNA-seq_ML7_E10.5_ctrl_MF_Epi+Mes/analysis/so_midface_Epi_Mes_E10.5.rds")
-
-FeaturePlot(so_midface_Epi_Mes_E10.5, 
-            features = "Pbx1",
-            #reduction = "umap.integrated",
-            #split.by = "orig.ident",
-            pt.size = 0.2)
-
-
-
-
-#### Comparison to Epi only datasets
-
-# Load pre-processed, integrated Seurat objects for MF E9.5-E11.5 Epi
-# Read the integrated Seurat object
-so_midface_Epi_E9.5_E10.5_E11.5_integrated <- readRDS(
-  "/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/analysis/so_midface_E9.5_E10.5_E11.5_integrated.rds"
-)
-
-# Rename orig.ident values
-so_midface_Epi_E9.5_E10.5_E11.5_integrated$orig.ident <- plyr::mapvalues(
-  so_midface_Epi_E9.5_E10.5_E11.5_integrated$orig.ident,
-  from = c("midface_E9.5", "midface_E10.5", "midface_E11.5"),
-  to   = c("midface_Epi_E9.5", "midface_Epi_E10.5", "midface_Epi_E11.5")
-)
-
-# Ensure the new factor levels are ordered
-so_midface_Epi_E9.5_E10.5_E11.5_integrated$orig.ident <- factor(
-  so_midface_Epi_E9.5_E10.5_E11.5_integrated$orig.ident,
-  levels = c("midface_Epi_E9.5", "midface_Epi_E10.5", "midface_Epi_E11.5")
-)
-
-####################       NOT UPDATED YET 08/20/2025.      #################### 
-######################## Plots for pre-analysis datasets #######################
-
-##### midface E9.5
-output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE9.5/"
-
-# UMAP of goi
-out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi) {
-  if (gene %in% rownames(so_midface_E9.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E9.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi
-p <- FeaturePlot(so_midface_E9.5, features = goi,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-# UMAP of goi_celltype
-out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_celltype.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi_celltype) {
-  if (gene %in% rownames(so_midface_E9.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E9.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi_celltype
-p <- FeaturePlot(so_midface_E9.5, features = goi_celltype,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-# UMAP of goi_spatial
-out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_spatial.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi_spatial) {
-  if (gene %in% rownames(so_midface_E9.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E9.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi_spatial
-p <- FeaturePlot(so_midface_E9.5, features = goi_spatial,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E9.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-
-##### midface E10.5
-output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE10.5/"
-
-# UMAP of goi
-out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi) {
-  if (gene %in% rownames(so_midface_E10.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E10.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi
-p <- FeaturePlot(so_midface_E10.5, features = goi,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-# UMAP of goi_celltype
-out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_celltype.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi_celltype) {
-  if (gene %in% rownames(so_midface_E10.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E10.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi_celltype
-p <- FeaturePlot(so_midface_E10.5, features = goi_celltype,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-# UMAP of goi_spatial
-out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_spatial.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi_spatial) {
-  if (gene %in% rownames(so_midface_E10.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E10.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi_spatial
-p <- FeaturePlot(so_midface_E10.5, features = goi_spatial,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E10.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-
-##### midface E11.5
-output_folder <- "~/Documents/postdoc/bioinformatics/results/integrated_hindlimbE10.5-18.5_midfaceE9.5-E11.5/pre_analysis_midfaceE11.5/"
-
-# UMAP of goi
-out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi) {
-  if (gene %in% rownames(so_midface_E11.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E11.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi
-p <- FeaturePlot(so_midface_E11.5, features = goi,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-# UMAP of goi_celltype
-out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_celltype.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi_celltype) {
-  if (gene %in% rownames(so_midface_E11.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E11.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi_celltype
-p <- FeaturePlot(so_midface_E11.5, features = goi_celltype,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_celltype.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-# UMAP of goi_spatial
-out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_spatial.pdf", sep = "")
-pdf(out_file, width = 7, height = 5)
-for (gene in goi_spatial) {
-  if (gene %in% rownames(so_midface_E11.5[["SCT"]])) {
-    p <- FeaturePlot(so_midface_E11.5, features = gene)
-    print(p)
-  } else {
-    message(paste("Gene", gene, "not found in dataset. Skipping."))
-  }
-}
-dev.off()
-
-# Multipannel UMAP of goi_spatial
-p <- FeaturePlot(so_midface_E11.5, features = goi_spatial,
-                 cols = c('lightgray', 'blue'),
-                 pt.size = 0.01)   # Adjust pt.size to your desired value
-out_file <- paste(output_folder, "/midface_E11.5.UMAP.goi_spatial.multipanel.pdf", sep = "")
-pdf(out_file, width = 25, height = 20)
-plot(p)
-dev.off()
-
-
-################################################################################
-####################### INTEGRATION OF MIDFACE DATASETS ########################
-
-# Define output folder (for results)
-output_folder <- "/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/analysis/"
-
-# Load raw data (pre-processed Seurat objects produced above)
-so_midface_E9.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/data/pre_analysis_midfaceE9.5/so_midface_E9.5.rds")
-so_midface_E10.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/data/pre_analysis_midfaceE10.5/so_midface_E10.5.rds")
-so_midface_E11.5 <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/data/pre_analysis_midfaceE11.5/so_midface_E11.5.rds")
-
-# Change the default assay to "SCT"
-DefaultAssay(so_midface_E9.5) <- "SCT"
-DefaultAssay(so_midface_E10.5) <- "SCT"
-DefaultAssay(so_midface_E11.5) <- "SCT"
-
-# Check memory usage before and after merge (due to Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
-pryr::mem_used()
-
-# Identify variable features for both datasets
-so_midface_E9.5 <- FindVariableFeatures(so_midface_E9.5, 
-                                         selection.method = "vst", 
-                                         nfeatures = 2000)
-so_midface_E10.5 <- FindVariableFeatures(so_midface_E10.5, 
-                                          selection.method = "vst", 
-                                          nfeatures = 2000)
-so_midface_E11.5 <- FindVariableFeatures(so_midface_E11.5, 
-                                          selection.method = "vst", 
-                                          nfeatures = 2000)
-
-
-# Select integration features
-SelectIntegrationFeatures(object.list = list(so_midface_E9.5, 
-                                             so_midface_E10.5, 
-                                             so_midface_E11.5),
-                          nfeatures = 2000,
-                          verbose = TRUE)
-
-# Step 1: Get the variable features for both datasets
-var_features_E9.5 <- so_midface_E9.5@assays[["SCT"]]@var.features
-var_features_E10.5 <- so_midface_E10.5@assays[["SCT"]]@var.features
-var_features_E11.5 <- so_midface_E11.5@assays[["SCT"]]@var.features
-
-# Step 2: Find the common variable features between the two datasets
-common_var_features <- Reduce(intersect, list(var_features_E9.5, 
-                                              var_features_E10.5, 
-                                              var_features_E11.5))
-
-# Step 3: Prepare the objects for integration using the common features
-objects <- list(so_midface_E9.5, 
-                so_midface_E10.5, 
-                so_midface_E11.5)
-
-# Prepare objects for integration
-objects <- PrepSCTIntegration(object.list = objects,
-                              anchor.features = common_var_features,
-                              verbose = TRUE)
-
-# Step 4: Find integration anchors - make sure to specify the common features
-anchors <- FindIntegrationAnchors(object.list = objects, 
-                                  normalization.method = "SCT", 
-                                  dims = 1:10, 
-                                  anchor.features = common_var_features,  # explicitly specify the features
-                                  k.anchor = 3,
-                                  verbose = TRUE)
-
-# Clear objects from workspace or clear all/close R and retrieve saved IntegrationAnchorSet
-# [necessary due to Memory capacity error]
-rm(so_midface_E9.5)
-rm(so_midface_E10.5)
-rm(so_midface_E11.5)
-rm(objects)
-
-# Step 5: Integrate the datasets using the found anchors
-so_midface_E9.5_E10.5_E11.5_integrated <- IntegrateData(anchorset = anchors, 
-                                                         normalization.method = "SCT",
-                                                         dims = 1:10)
-
-# Step 6: Perform scaling and PCA on the integrated data
-so_midface_E9.5_E10.5_E11.5_integrated <- ScaleData(so_midface_E9.5_E10.5_E11.5_integrated)
-so_midface_E9.5_E10.5_E11.5_integrated <- RunPCA(so_midface_E9.5_E10.5_E11.5_integrated, verbose = FALSE)
-
-# Number of features selection by elbow method (you can use elbow plot to decide on the number of PCs)
-p <- ElbowPlot(so_midface_E9.5_E10.5_E11.5_integrated, ndims = 20)
-out_path <- paste(output_folder, "integrated_midface_E9.5_E10.5_E11.5.data.qc.ellbowplot.pdf", sep = "")
-pdf(out_path, width = 5, height = 5)
-plot(p)
-dev.off()
-
-# Store number of principle components in new variable (to be used later)
-pca_dim_sel <- 15
-
-# Perform UMAP on integrated data
-so_midface_E9.5_E10.5_E11.5_integrated <- RunUMAP(so_midface_E9.5_E10.5_E11.5_integrated, 
-                                                   dims = 1:pca_dim_sel, 
-                                                   reduction = "pca", 
-                                                   reduction.name = "umap.integrated")
-
-# Change the default assay to "SCT" (normalized dataset)
-DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
-
-# Clustering (Leiden) - Seurat v5 should work similarly
-so_midface_E9.5_E10.5_E11.5_integrated <- FindNeighbors(so_midface_E9.5_E10.5_E11.5_integrated,
-                                                         dims = 1:pca_dim_sel)
-so_midface_E9.5_E10.5_E11.5_integrated <- FindClusters(so_midface_E9.5_E10.5_E11.5_integrated,
-                                                        resolution = 0.5,
-                                                        algorithm = 4,
-                                                        graph.name = "integrated_snn")
-
-# Set the desired order of orig.ident
-so_midface_E9.5_E10.5_E11.5_integrated$orig.ident <- factor(
-  so_midface_E9.5_E10.5_E11.5_integrated$orig.ident,
-  levels = c("midface_E9.5", "midface_E10.5", "midface_E11.5")
-)
-
-# Visualize datasets as UMAP after Integration
-p <- DimPlot(so_midface_E9.5_E10.5_E11.5_integrated, 
-             reduction = "umap.integrated", 
-             group.by = c("orig.ident", "seurat_clusters"))
-outFile <- paste(output_folder, "/midface_E9.5_E10.5_E11.5_integrated.UMAP.orig.ident.clusters.pdf", sep = "")
-pdf(outFile, width = 12, height = 5)
-plot(p)
-dev.off()
-
-p <- DimPlot(object = so_midface_E9.5_E10.5_E11.5_integrated,
-             reduction = "umap.integrated",
-             group.by = 'seurat_clusters',
-             split.by = 'orig.ident',
-             label = TRUE)
-outFile <- paste(output_folder, "/midface_E9.5_E10.5_E11.5_integrated.UMAP.orig.ident.clusters_split.pdf", sep = "")
-pdf(outFile, width = 20, height = 5)
-plot(p)
-dev.off()
-
-
-# Save the Seurat object
-outFile <- paste(output_folder, "so_midface_E9.5_E10.5_E11.5_integrated.rds", sep = "")
-saveRDS(so_midface_E9.5_E10.5_E11.5_integrated, file = outFile)
-
-
-######## Visualize GOI as FeaturePlot
-
-# Load pre-processed, integrated Seurat objects produced above
-so_midface_E9.5_E10.5_E11.5_integrated <- readRDS("/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/analysis/so_midface_E9.5_E10.5_E11.5_integrated.rds")
-
-# Set the desired order of orig.ident
-so_midface_E9.5_E10.5_E11.5_integrated$orig.ident <- factor(
-  so_midface_E9.5_E10.5_E11.5_integrated$orig.ident,
-  levels = c("midface_E9.5", "midface_E10.5", "midface_E11.5")
-)
-
-# Definition of GOI (TFs and Senesence pathway genes)
-goi <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4", "Zfhx3", "Zfhx4",           
-         "Grhl3", "Snai2", "Tfap2a", "Tfap2b", "Twist1", "Barx1", "Cxxc4", 
-         "Aldh1a2", "Dlx1", "Dlx2", "Sox9",                                     # Marker Genes for Epithelial Seam Cells at the Lambdoidal Junction
-         "Tgfb1", "Smad2", "Smad4", "Smad5",                                    # TGF-beta pathway
-         "Mtor", "Akt1",                                                        # mTOR pathway
-         "Foxo1", "Foxo3", "Foxo4", "Foxo6",                                    # FOXO TFs
-         "Cdkn2a")                                                              # p19ARF
-
-# Change the default assay to "SCT"
-DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
-
-# Plots for goi
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.UMAP.goi.orig.ident.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-# Loop through each gene and check if it exists in the Seurat object
-for (gene in goi) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    # Plot only if the gene is found in the Seurat object
-    p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
-                     features = gene,
-                     reduction = "umap.integrated",
-                     split.by = "orig.ident")
-    plot(p)
-  } else {
-    # Print a message for missing genes (optional)
-    message(paste("Gene not found in data: ", gene))
-  }
-}
-
-dev.off()
-
-# Definition of GOI (TFs and Senesence pathway genes)
-goi_zipp_lambda <- c("Bambi", "Bmp4", "Msx1", "Tgfb2", "Fgf9", "Wnt9a", "Trp63")
-
-goi_cellcycle <- c("Aurkb", "Cdk1", "Mki67", "Cdkn1a", "Cdkn1b", "Cdkn1c")
-
-goi_periderm <- c("Krt17", "Krt6a", "Krt6b", "Grhl3", "Irf6", "Tfap2c", "Cldn1", 
-                  "Cldn4", "Sfn", "Tgm1")
-
-goi_nicotine <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4", "Zfhx3", "Zfhx4",           
-                  "Chrna3", "Chrna5", "Chrnb4",                                 # nAchRs
-                  "Cyp2a5", "Ankk1",                                            # nicotine pathway and metabolism
-                  "Slc6a3", "Slc18a2", "Th", "Ddc", "Drd2")                     # dopamine release
-
-goi_senescence <- c("Atm", "Atr", "Trp53", "Cdkn1a", "Ccne1", "Cdk2", "Cdkn2a", # List of "cellular senescence in human disease" genes from review printout 1 (provided by Licia)
-                    "Mdm2", "Ccnd1", "Cdk4", "Cdk6", "E2f1", "Rb1",             # List of "cellular senescence in human disease" genes from review printout 1 (provided by Licia) 
-                    "Tgfb1", "Tgfb2", "Tgfb3", "Cdkn2b", "Smad2", "Smad3",      # List of "acute senescence (development)" genes from review printout 2 (provided by Licia)
-                    "Smad4", "Smad7", "Foxo1", "Foxo3", "Foxo4", "Foxo6",       # List of "acute senescence (development)" genes from review printout 2 (provided by Licia)
-                    "Pten", "Cdkn1a", "Cdk2",                                   # List of "acute senescence (development)" genes from review printout 2 (provided by Licia)
-                    "Ccn1", "Hras", "Nras", "Kras", "Pik3ca", "Pik3cb",         # List of "acute senescence (adulthood)" genes from review printout 2 (provided by Licia)
-                    "Pik3cd", "Pik3cg", "Braf", "Akt1", "Akt2", "Akt3",         # List of "acute senescence (adulthood)" genes from review printout 2 (provided by Licia)
-                    "Map2k1", "Map2k2", "Atm", "Atr", "Cdkn2a", "Ets1", "Mtor", # List of "acute senescence (adulthood)" genes from review printout 2 (provided by Licia)
-                    "Trp53", "Cdkn1a", "Mapk14", "Mapk11", "Cdk4", "Cdk6",      # List of "acute senescence (adulthood)" genes from review printout 2 (provided by Licia)
-                    "Rb1", "Rbl1", "Rbl2",                                      # List of "acute senescence (adulthood)" genes from review printout 2 (provided by Licia)
-                    "Atm", "Atr", "Cdkn2a", "Trp53", "Cdkn1a", "Cdk2", "Cdk4",  # List of "chronic senescence (adulthood)" genes from review printout 2 (provided by Licia)
-                    "Cdk6", "Rb1", "Rbl1", "Rbl2"                               # List of "chronic senescence (adulthood)" genes from review printout 2 (provided by Licia)
-)
-
-goi_senescence_cur <- c("Atm", "Atr", "Trp53", "Cdkn1a", "Ccne1", "Cdk2", "Cdkn2a",   # curated list of senescence-related genes (removed duplicates from previous list)
-                        "Mdm2", "Ccnd1", "Cdk4", "Cdk6", "E2f1", "Rb1",
-                        "Tgfb1", "Tgfb2", "Tgfb3", "Cdkn2b", "Smad2", "Smad3",
-                        "Smad4", "Smad7", "Foxo1", "Foxo3", "Foxo4", "Foxo6",
-                        "Pten", "Ccn1", "Hras", "Nras", "Kras", "Pik3ca", "Pik3cb",
-                        "Pik3cd", "Pik3cg", "Braf", "Akt1", "Akt2", "Akt3",
-                        "Map2k1", "Map2k2", "Ets1", "Mtor", "Mapk14", "Mapk11",
-                        "Rbl1", "Rbl2")
-
-# Change the default assay to "SCT"
-DefaultAssay(so_midface_E9.5_E10.5_E11.5_integrated) <- "SCT"
-
-### Plots for goi
-
-# Plots for goi_zipp_lambda
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.UMAP.goi_zipp_lambda.orig.ident.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-# Loop through each gene and check if it exists in the Seurat object
-for (gene in goi_zipp_lambda) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    # Plot only if the gene is found in the Seurat object
-    p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
-                     features = gene,
-                     reduction = "umap.integrated",
-                     split.by = "orig.ident")
-    plot(p)
-  } else {
-    # Print a message for missing genes (optional)
-    message(paste("Gene not found in data: ", gene))
-  }
-}
-dev.off()
-
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.Violin.goi_zipp_lambda.seurat_clusters.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-for (gene in goi_zipp_lambda) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    p <- VlnPlot(so_midface_E9.5_E10.5_E11.5_integrated,
-      features = gene,
-      group.by = "seurat_clusters",
-      pt.size = 0.1
-    ) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-    print(p)
-  } else {
-    message(paste("Gene not found in data:", gene))
-  }
-}
-dev.off()
-
-# Plots for goi_cellcycle
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.UMAP.goi_cellcycle.orig.ident.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-# Loop through each gene and check if it exists in the Seurat object
-for (gene in goi_cellcycle) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    # Plot only if the gene is found in the Seurat object
-    p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
-                     features = gene,
-                     reduction = "umap.integrated",
-                     split.by = "orig.ident")
-    plot(p)
-  } else {
-    # Print a message for missing genes (optional)
-    message(paste("Gene not found in data: ", gene))
-  }
-}
-dev.off()
-
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.Violin.goi_cellcycle.seurat_clusters.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-for (gene in goi_cellcycle) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    p <- VlnPlot(so_midface_E9.5_E10.5_E11.5_integrated,
-                 features = gene,
-                 group.by = "seurat_clusters",
-                 pt.size = 0.1
-    ) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-    print(p)
-  } else {
-    message(paste("Gene not found in data:", gene))
-  }
-}
-dev.off()
-
-# Plots for goi_periderm
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.UMAP.goi_periderm.orig.ident.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-# Loop through each gene and check if it exists in the Seurat object
-for (gene in goi_periderm) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    # Plot only if the gene is found in the Seurat object
-    p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
-                     features = gene,
-                     reduction = "umap.integrated",
-                     split.by = "orig.ident")
-    plot(p)
-  } else {
-    # Print a message for missing genes (optional)
-    message(paste("Gene not found in data: ", gene))
-  }
-}
-dev.off()
-
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.Violin.goi_periderm.seurat_clusters.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-for (gene in goi_periderm) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    p <- VlnPlot(so_midface_E9.5_E10.5_E11.5_integrated,
-                 features = gene,
-                 group.by = "seurat_clusters",
-                 pt.size = 0.1
-    ) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-    print(p)
-  } else {
-    message(paste("Gene not found in data:", gene))
-  }
-}
-dev.off()
-
-# Plots for goi_nicotine
-outFile <- paste(output_folder,
-                 "/midface_E9.5_E10.5_E11.5_integrated.UMAP.goi_nicotine.orig.ident.pdf", 
-                 sep = "")
-pdf(outFile, width = 20, height = 5)
-# Loop through each gene and check if it exists in the Seurat object
-for (gene in goi_nicotine) {
-  if (gene %in% rownames(so_midface_E9.5_E10.5_E11.5_integrated)) {
-    # Plot only if the gene is found in the Seurat object
-    p <- FeaturePlot(so_midface_E9.5_E10.5_E11.5_integrated, 
-                     features = gene,
-                     reduction = "umap.integrated",
-                     split.by = "orig.ident")
-    plot(p)
-  } else {
-    # Print a message for missing genes (optional)
-    message(paste("Gene not found in data: ", gene))
-  }
-}
-dev.off()
-
-##### UMAP Coexpression of Pbx1 and Zfhx3
-# Define a list of gene sets (co-expressed genes)
-gene_set_1 <- list(Coexpression = c("Pbx1",
-                                    "Zfhx3"))
-gene_set_2 <- list(Coexpression = c("Pbx2",
-                                    "Zfhx3"))
-
-# Add module scores to the Seurat object
-data <- AddModuleScore(so_midface_E9.5_E10.5_E11.5_integrated, 
-                       features = gene_set_2, name = "CoexpressionScore")
-
-# Visualize the module score in UMAP
-p <- FeaturePlot(data, features = "CoexpressionScore1",
-                 pt.size = 0.5) +
-  scale_color_gradient2(low = "red", mid = "white", high = "blue", midpoint = median(data$CoexpressionScore1)) +
-  labs(title = "Co-expression of Pbx2 and Zfhx3 in E9.5-11.5 midface scRNA-seq", 
-       x = "UMAP 1", 
-       y = "UMAP 2", 
-       color = "Co-expression\n(Pbx2, Zfhx3)") +  # Custom legend title
-  theme_minimal()
-outFile <- paste(output_folder, "/midface_E9.5_E10.5_E11.5_integrated.UMAP.coexpressionPbx2+Zfhx3.pdf", sep = "")
-pdf(outFile, width = 10, height = 5)
-plot(p)
-dev.off()
-
-
 ### Determine marker genes for each cluster
-so_midface_E9.5_E10.5_E11.5_integrated <- PrepSCTFindMarkers(so_midface_E9.5_E10.5_E11.5_integrated)
+so_midface_Epi_Mes_E10.5 <- PrepSCTFindMarkers(so_midface_Epi_Mes_E10.5)
 
 markers <- FindAllMarkers(
-  object = so_midface_E9.5_E10.5_E11.5_integrated,
+  object = so_midface_Epi_Mes_E10.5,
   only.pos = TRUE,               # Return only positive markers (upregulated in the cluster)
   min.pct = 0.25,                # Gene expressed in at least 25% of cells in either group
   logfc.threshold = 0.25         # Minimum log fold change
 )
 
 # Save the marker list to a CSV file
-write.csv(markers, file = "/wynton/home/selleri/veritasnondatur/scRNA-seq/integrated_midfaceE9.5-11.5/analysis/midface_E9.5_E10.5_E11.5_integrated.markers.csv")
+write.csv(markers, file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF_Epi+Mes-E10.5ctrl_ML7/analysis/midface_Epi_Mes_E10.5.markers.csv")
 
+## Very prominent markers
+markers <- FindAllMarkers(
+  object = so_midface_Epi_Mes_E10.5,
+  only.pos = TRUE,               # Return only positive markers (upregulated in the cluster)
+  min.pct = 0.25,                # Gene expressed in at least 25% of cells in either group
+  logfc.threshold = 01         # Minimum log fold change
+)
+
+# Save the marker list to a CSV file
+write.csv(markers, file = "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_midface/MF_Epi+Mes-E10.5ctrl_ML7/analysis/midface_Epi_Mes_E10.5.prominent_markers.csv")
+
+
+### Overlaps of expression
+# Define pairs of interest
+gene_pairs <- list(
+  c("Bmpr1a", "Bmp4"),
+  c("Bmpr1b", "Bmp4"),
+  c("Bmpr2",  "Bmp4"),
+  c("Smad1",  "Bmp4"),
+  c("Smad2",  "Bmp4"),
+  c("Smad4",  "Bmp4"),
+  c("Smad5",  "Bmp4"),
+  c("Id1",    "Bmp4"),
+  c("Id2",    "Bmp4"),
+  c("Id3",    "Bmp4")
+)
+
+# Output file
+outFile <- paste0(output_folder,
+                  "/midface_Epi_Mes_E10.5.UMAP.Bmp4_receptors+effectors.orig.ident.pdf")
+pdf(outFile, width = 20, height = 5)
+
+for (pair in gene_pairs) {
+  if (all(pair %in% rownames(so_midface_Epi_Mes_E10.5))) {
+    p <- FeaturePlot(
+      so_midface_Epi_Mes_E10.5,
+      features = pair,
+      reduction = "umap",
+      blend = TRUE,
+      cols = c("grey90", "blue", "magenta"),
+      order = TRUE,
+      split.by = "orig.ident"
+    )
+    print(p)
+  } else {
+    message(paste("One or both genes not found in data: ", paste(pair, collapse = ", ")))
+  }
+}
+
+dev.off()
+
+
+### Plots for genes of cell adhesion molecules
+
+# Alpha (ITGA) subunits (18)
+alpha.integrins <- c(
+  "Itga1","Itga2","Itga3","Itga4","Itga5","Itga6","Itga7",
+  "Itga8","Itga9","Itga10","Itga11",
+  "Itga2b","Itgav","Itgae","Itgal","Itgam","Itgax","Itgad"
+)
+
+# Beta (ITGB) subunits (8)
+beta.integrins <- c(
+  "Itgb1","Itgb2","Itgb3","Itgb4","Itgb5","Itgb6","Itgb7","Itgb8"
+)
+
+goi <-  c(alpha.integrins,
+          beta.integrins,
+          "Thbs1",   # thrombospondin-1
+          "Tns1",    # tensin 1
+          "Postn",   # periostin (osteoblast specific factor)
+          "Fn1",     # fibronectin 1
+          "Flrt2",   # fibronectin leucine rich transmambrane protein 2
+          "Tgfbi",   # transforming growth factor, beta induced, 68kDA
+          "Cdsn",    # corneodesmosin
+          "Dsc2"     # desmocollin 2
+)
+
+################################ Violin plots  #################################
+# Violin Plot for goi
+outFile <- paste(output_folder,
+                 "/midface_Epi_Mes_E10.5.Violin.goi_cell_adhesion.seurat_clusters.pdf", 
+                 sep = "")
+pdf(outFile, width = 20, height = 5)
+for (gene in goi) {
+  if (gene %in% rownames(so_midface_Epi_Mes_E10.5)) {
+    p <- VlnPlot(so_midface_Epi_Mes_E10.5,
+                 features = gene,
+                 group.by = "seurat_clusters",
+                 pt.size = 0.1
+    ) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    print(p)
+  } else {
+    message(paste("Gene not found in data:", gene))
+  }
+}
+dev.off()
+
+
+### UMAP Plots for goi
+outFile <- paste(output_folder,
+                 "/midface_Epi_Mes_E10.5.UMAP.goi_cell_adhesion.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 15, height = 10)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_midface_Epi_Mes_E10.5)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_midface_Epi_Mes_E10.5, 
+                     features = gene,
+                     reduction = "umap",
+                     split.by = "orig.ident")
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
