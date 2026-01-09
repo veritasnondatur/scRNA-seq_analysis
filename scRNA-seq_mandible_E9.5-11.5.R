@@ -745,6 +745,206 @@ for (gene in goi) {
 
 dev.off()
 
+#################### Dotplots per dataset and seurat cluster ###################
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+
+# Ensure clusters are identities
+Idents(so) <- "seurat_clusters"
+
+# Composite cluster + sample identity
+so$cluster_identity <- paste0("Cluster_", Idents(so), "_", so$orig.ident)
+
+sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+all_combos <- expand.grid(
+  cluster = sort(unique(Idents(so))),
+  sample = sample_order
+)
+cluster_levels <- paste0("Cluster_", all_combos$cluster, "_", all_combos$sample)
+
+so$cluster_identity <- factor(so$cluster_identity, levels = cluster_levels)
+
+outFile <- paste(
+  output_folder,
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.goi.by.cluster.and.orig.ident.pdf",
+  sep = ""
+)
+
+pdf(outFile, width = 5, height = 10)
+
+for (gene in goi) {
+  if (gene %in% rownames(so)) {
+    p <- DotPlot(
+      so,
+      features = gene,
+      group.by = "cluster_identity"
+    ) +
+      RotatedAxis() +
+      scale_color_viridis_c() +
+      labs(title = gene)
+    
+    print(p)
+  } else {
+    message(paste("Gene not found in data:", gene))
+  }
+}
+
+dev.off()
+
+#################### Ordered DotPlot: all GOI ####################
+
+# Seurat object
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+
+# Ensure cluster identities are set
+Idents(so) <- "seurat_clusters"
+
+# Define timepoint order
+sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+# Create composite cluster × timepoint identity
+so$cluster_identity <- paste0(
+  "Cluster_",
+  Idents(so),
+  "_",
+  so$orig.ident
+)
+
+# Build desired ordering: Cluster 1 (E9.5 → E10.5 → E11.5), Cluster 2, ...
+clusters <- sort(as.numeric(levels(Idents(so))))
+
+cluster_levels <- unlist(
+  lapply(clusters, function(cl) {
+    paste0("Cluster_", cl, "_", sample_order)
+  })
+)
+
+# Apply ordering
+so$cluster_identity <- factor(
+  so$cluster_identity,
+  levels = cluster_levels
+)
+
+# Keep only genes present in the object
+valid_goi <- goi[goi %in% rownames(so)]
+if (length(valid_goi) == 0) {
+  stop("None of the genes in 'goi' were found in the Seurat object.")
+}
+
+# Create DotPlot
+p <- DotPlot(
+  so,
+  features = valid_goi,
+  group.by = "cluster_identity",
+  scale = TRUE
+) +
+  RotatedAxis() +
+  scale_color_viridis_c() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major = element_line(color = "grey90")
+  ) +
+  labs(
+    x = "Cluster × timepoint",
+    y = "Gene",
+    color = "Avg. expression (scaled)",
+    size = "% expressing"
+  )
+
+# Save to PDF
+outFile <- paste(
+  output_folder,
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.by.cluster.and.timepoint.pdf",
+  sep = ""
+)
+
+pdf(outFile,
+    width = 7,
+    height = 0.5 * length(valid_goi) + 4)
+
+print(p)
+dev.off()
+
+#################### Ordered DotPlot: all GOI (rocket palette) ####################
+
+library(Seurat)
+library(viridis)
+
+# Seurat object
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+
+# Ensure cluster identities are set
+Idents(so) <- "seurat_clusters"
+
+# Define timepoint order
+sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+# Create composite cluster × timepoint identity
+so$cluster_identity <- paste0(
+  "Cluster_",
+  Idents(so),
+  "_",
+  so$orig.ident
+)
+
+# Build desired ordering: Cluster 1 (E9.5 → E10.5 → E11.5), Cluster 2, ...
+clusters <- sort(as.numeric(levels(Idents(so))))
+
+cluster_levels <- unlist(
+  lapply(clusters, function(cl) {
+    paste0("Cluster_", cl, "_", sample_order)
+  })
+)
+
+# Apply ordering
+so$cluster_identity <- factor(
+  so$cluster_identity,
+  levels = cluster_levels
+)
+
+# Keep only genes present in the object
+valid_goi <- goi[goi %in% rownames(so)]
+if (length(valid_goi) == 0) {
+  stop("None of the genes in 'goi' were found in the Seurat object.")
+}
+
+# Create DotPlot with rocket palette
+p <- DotPlot(
+  so,
+  features = valid_goi,
+  group.by = "cluster_identity",
+  scale = TRUE          # scale expression per gene
+) +
+  RotatedAxis() +
+  scale_color_viridis_c(option = "rocket") +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major = element_line(color = "grey90")
+  ) +
+  labs(
+    x = "Cluster × timepoint",
+    y = "Gene",
+    color = "Avg. expression (scaled)",
+    size = "% expressing"
+  )
+
+# Save to PDF
+outFile <- paste(
+  output_folder,
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.by.cluster.and.timepoint.rocket.pdf",
+  sep = ""
+)
+
+pdf(
+  outFile,
+  width = 7,
+  height = 0.5 * length(valid_goi) + 4
+)
+
+print(p)
+dev.off()
 
 ############################ UMAP plots for goi ################################
 
@@ -951,114 +1151,129 @@ library(ggplot2)
 orig_levels <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
 
 so <- so_mandible_E9.5_E10.5_E11.5_integrated  # convenience short name
-outFile <- paste0(output_folder, "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.goi.orig.ident_ContrastRaster_downsize.pdf")
 
-# parameters you can tweak:
+# define color palettes and suffixes
+palettes <- list(
+  blue    = c("lightskyblue1", "steelblue", "darkblue"),
+  purple  = c("violet", "mediumorchid", "purple4"),
+  green   = c("palegoldenrod", "seagreen3", "darkgreen")
+)
+
+# parameters
 top_quantile <- 0.90    # top 10% of positives
 nonexp_size <- 0.35     
 low_size <- 0.7         
 high_size <- 1.6        
 grey_col <- "grey80"    
-palette_cols <- c("lightblue", "steelblue", "purple")  # low -> high expressors
 
-pdf(outFile, width = 15, height = 5)
-
-for (gene in goi) {
-  if (!(gene %in% rownames(so))) {
-    message("Gene not found in data: ", gene)
-    next
-  }
+for (pal_name in names(palettes)) {
+  palette_cols <- palettes[[pal_name]]
   
-  emb <- Embeddings(so, "umap.integrated")
-  fetch <- FetchData(so, vars = c(gene, "orig.ident"))
-  
-  df <- data.frame(
-    cell = rownames(fetch),
-    UMAP_1 = emb[rownames(fetch), 1],
-    UMAP_2 = emb[rownames(fetch), 2],
-    expr = as.numeric(fetch[, gene]),
-    orig.ident = factor(fetch[, "orig.ident"], levels = orig_levels),
-    stringsAsFactors = FALSE
+  outFile <- paste0(
+    output_folder, "/mandible_E9.5_E10.5_E11.5_integrated.UMAP.goi.orig.ident_ContrastRaster_", 
+    pal_name, "_downsize.pdf"
   )
   
-  # split non / low / high
-  non_idx <- which(df$expr == 0 | is.na(df$expr))
-  pos_idx <- which(df$expr > 0)
-  if (length(pos_idx) == 0) {
-    qtop <- NA
-  } else {
-    qtop <- as.numeric(quantile(df$expr[pos_idx], probs = top_quantile, na.rm = TRUE))
-  }
+  pdf(outFile, width = 5, height = 12)
   
-  if (is.na(qtop) || qtop == 0) {
-    low_idx <- integer(0)
-    high_idx <- pos_idx
-  } else {
-    low_idx <- which(df$expr > 0 & df$expr <= qtop)
-    high_idx <- which(df$expr > qtop)
-    if (length(high_idx) == 0 && length(pos_idx) >= 1) {
-      qtop2 <- as.numeric(quantile(df$expr[pos_idx], probs = 0.75, na.rm = TRUE))
-      low_idx <- which(df$expr > 0 & df$expr <= qtop2)
-      high_idx <- which(df$expr > qtop2)
+  for (gene in goi) {
+    if (!(gene %in% rownames(so))) {
+      message("Gene not found in data: ", gene)
+      next
     }
+    
+    emb <- Embeddings(so, "umap.integrated")
+    fetch <- FetchData(so, vars = c(gene, "orig.ident"))
+    
+    df <- data.frame(
+      cell = rownames(fetch),
+      UMAP_1 = emb[rownames(fetch), 1],
+      UMAP_2 = emb[rownames(fetch), 2],
+      expr = as.numeric(fetch[, gene]),
+      orig.ident = factor(fetch[, "orig.ident"], levels = orig_levels),
+      stringsAsFactors = FALSE
+    )
+    
+    # split non / low / high
+    non_idx <- which(df$expr == 0 | is.na(df$expr))
+    pos_idx <- which(df$expr > 0)
+    if (length(pos_idx) == 0) {
+      qtop <- NA
+    } else {
+      qtop <- as.numeric(quantile(df$expr[pos_idx], probs = top_quantile, na.rm = TRUE))
+    }
+    
+    if (is.na(qtop) || qtop == 0) {
+      low_idx <- integer(0)
+      high_idx <- pos_idx
+    } else {
+      low_idx <- which(df$expr > 0 & df$expr <= qtop)
+      high_idx <- which(df$expr > qtop)
+      if (length(high_idx) == 0 && length(pos_idx) >= 1) {
+        qtop2 <- as.numeric(quantile(df$expr[pos_idx], probs = 0.75, na.rm = TRUE))
+        low_idx <- which(df$expr > 0 & df$expr <= qtop2)
+        high_idx <- which(df$expr > qtop2)
+      }
+    }
+    
+    df_non  <- df[non_idx, , drop = FALSE]
+    df_low  <- df[low_idx, , drop = FALSE]
+    df_high <- df[high_idx, , drop = FALSE]
+    
+    # plotting
+    p <- ggplot() +
+      # Non-expressors
+      (if (nrow(df_non) > 0) {
+        if (has_ggrastr) ggrastr::geom_point_rast(
+          data = df_non, aes(x = UMAP_1, y = UMAP_2),
+          color = grey_col, size = nonexp_size, raster.dpi = 150
+        ) else geom_point(
+          data = df_non, aes(x = UMAP_1, y = UMAP_2),
+          color = grey_col, size = nonexp_size
+        )
+      } else NULL) +
+      # Low expressors
+      (if (nrow(df_low) > 0) {
+        if (has_ggrastr) ggrastr::geom_point_rast(
+          data = df_low, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = low_size, raster.dpi = 150
+        ) else geom_point(
+          data = df_low, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = low_size
+        )
+      } else NULL) +
+      # High expressors
+      (if (nrow(df_high) > 0) {
+        if (has_ggrastr) ggrastr::geom_point_rast(
+          data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = high_size, raster.dpi = 150
+        ) else geom_point(
+          data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = high_size
+        )
+      } else NULL) +
+      facet_wrap(~ orig.ident, ncol = 1, scales = "fixed") +
+      scale_color_gradientn(colors = palette_cols, na.value = palette_cols[1]) +
+      ggtitle(gene) +
+      theme_minimal() +
+      labs(x = "umapintegrated_1", y = "umapintegrated_2") +
+      theme(
+        strip.text = element_text(size = 12),
+        legend.position = "right",
+        plot.title = element_text(hjust = 0.5, size = 12),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        axis.line = element_line(color = "black", linewidth = 0.6),
+        panel.grid = element_blank()
+      ) +
+      guides(color = guide_colorbar(title = "Expression"))
+    
+    print(p)
   }
   
-  df_non  <- df[non_idx, , drop = FALSE]
-  df_low  <- df[low_idx, , drop = FALSE]
-  df_high <- df[high_idx, , drop = FALSE]
-  
-  # plotting
-  p <- ggplot() +
-    # Non-expressors
-    (if (nrow(df_non) > 0) {
-      if (has_ggrastr) ggrastr::geom_point_rast(
-        data = df_non, aes(x = UMAP_1, y = UMAP_2),
-        color = grey_col, size = nonexp_size, raster.dpi = 300
-      ) else geom_point(
-        data = df_non, aes(x = UMAP_1, y = UMAP_2),
-        color = grey_col, size = nonexp_size
-      )
-    } else NULL) +
-    # Low expressors (lighter blue)
-    (if (nrow(df_low) > 0) {
-      if (has_ggrastr) ggrastr::geom_point_rast(
-        data = df_low, aes(x = UMAP_1, y = UMAP_2, color = expr),
-        size = low_size, raster.dpi = 300
-      ) else geom_point(
-        data = df_low, aes(x = UMAP_1, y = UMAP_2, color = expr),
-        size = low_size
-      )
-    } else NULL) +
-    # High expressors
-    (if (nrow(df_high) > 0) {
-      if (has_ggrastr) ggrastr::geom_point_rast(
-        data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
-        size = high_size, raster.dpi = 300
-      ) else geom_point(
-        data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
-        size = high_size
-      )
-    } else NULL) +
-    facet_wrap(~ orig.ident, nrow = 1, scales = "fixed") +
-    scale_color_gradientn(colors = palette_cols, na.value = palette_cols[1]) +
-    ggtitle(gene) +
-    theme_minimal() +
-    labs(x = "umapintegrated_1", y = "umapintegrated_2") +
-    theme(
-      strip.text = element_text(size = 20),             # subplot titles twice as big
-      legend.position = "right",
-      plot.title = element_text(hjust = 0.5, size = 16),
-      axis.text = element_text(size = 12),
-      axis.title = element_text(size = 14),
-      axis.line = element_line(color = "black", linewidth = 0.6),  # axis lines
-      panel.grid = element_blank()  # remove grid for clarity
-    ) +
-    guides(color = guide_colorbar(title = "Expression"))
-  
-  print(p)
+  dev.off()
 }
 
-dev.off()
 
 
 
@@ -1153,7 +1368,7 @@ for (gene in goi) {
     (if (nrow(df_non) > 0) {
       if (has_ggrastr) ggrastr::geom_point_rast(
         data = df_non, aes(x = UMAP_1, y = UMAP_2),
-        color = grey_col, size = nonexp_size, raster.dpi = 300
+        color = grey_col, size = nonexp_size, raster.dpi = 150
       ) else geom_point(
         data = df_non, aes(x = UMAP_1, y = UMAP_2),
         color = grey_col, size = nonexp_size
@@ -1173,7 +1388,7 @@ for (gene in goi) {
     (if (nrow(df_high) > 0) {
       if (has_ggrastr) ggrastr::geom_point_rast(
         data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
-        size = high_size, raster.dpi = 300
+        size = high_size, raster.dpi = 150
       ) else geom_point(
         data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
         size = high_size
