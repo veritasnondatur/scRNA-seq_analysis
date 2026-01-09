@@ -679,7 +679,7 @@ saveRDS(so_mandible_E9.5_E10.5_E11.5_integrated, file = outFile)
 so_mandible_E9.5_E10.5_E11.5_integrated <- readRDS("~/Documents/postdoc/collaboration/Pauline/mandible_E9.5-11.5_integration/so_mandible_E9.5_E10.5_E11.5_integrated.rds")
 
 # Define genes of interest (goi)
-goi <- c("Dgkk", "Gpr50", "Hand2", "Dlx6")
+goi <- c("Dgkk", "Dlx6")
 
 
 ########################### Violin plots per dataset ###########################
@@ -791,7 +791,167 @@ for (gene in goi) {
 
 dev.off()
 
-#################### Ordered DotPlot: all GOI ####################
+#################### DotPlot: all GOI, ordered by cluster ####################
+
+library(Seurat)
+library(viridis)
+
+# Seurat object
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+
+# Ensure clusters are identities
+Idents(so) <- "seurat_clusters"
+
+# Define timepoint order
+sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+# Create composite identity: Cluster_X + sample
+so$cluster_identity <- paste0(
+  "Cluster_", Idents(so), "_", so$orig.ident
+)
+
+# Get unique clusters
+clusters <- sort(as.numeric(levels(Idents(so))))
+
+# Build **cluster-first ordering**: Cluster1_E9.5, Cluster2_E9.5, Cluster3_E9.5, Cluster1_E10.5, ...
+cluster_levels <- unlist(
+  lapply(sample_order, function(sample) {
+    paste0("Cluster_", clusters, "_", sample)
+  })
+)
+
+# Apply the new factor ordering
+so$cluster_identity <- factor(
+  so$cluster_identity,
+  levels = cluster_levels
+)
+
+# Keep only genes present in the object
+valid_goi <- goi[goi %in% rownames(so)]
+if (length(valid_goi) == 0) {
+  stop("None of the genes in 'goi' were found in the Seurat object.")
+}
+
+# Create DotPlot
+p <- DotPlot(
+  so,
+  features = valid_goi,
+  group.by = "cluster_identity",
+  scale = TRUE
+) +
+  RotatedAxis() +
+  scale_color_viridis_c() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major = element_line(color = "grey90")
+  ) +
+  labs(
+    x = "Cluster × timepoint",
+    y = "Gene",
+    color = "Avg. expression (scaled)",
+    size = "% expressing"
+  )
+
+# Save to PDF
+outFile <- paste(
+  output_folder,
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.cluster_ordered.pdf",
+  sep = ""
+)
+
+pdf(outFile,
+    width = 7,
+    height = 0.5 * length(valid_goi) + 4)
+
+print(p)
+dev.off()
+
+
+#################### DotPlot: all GOI, clusters top → bottom ####################
+
+library(Seurat)
+library(viridis)
+
+# Seurat object
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+
+# Ensure clusters are identities
+Idents(so) <- "seurat_clusters"
+
+# Define timepoint order
+sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+# Create composite identity: Cluster_X + sample
+so$cluster_identity <- paste0(
+  "Cluster_",
+  Idents(so),
+  "_",
+  so$orig.ident
+)
+
+# Get unique clusters
+clusters <- sort(as.numeric(levels(Idents(so))))
+
+# Cluster-first ordering:
+# Cluster1_E9.5, Cluster2_E9.5, ..., Cluster1_E10.5, ...
+cluster_levels <- unlist(
+  lapply(sample_order, function(sample) {
+    paste0("Cluster_", clusters, "_", sample)
+  })
+)
+
+# IMPORTANT: reverse levels so Cluster 1 appears at the TOP
+so$cluster_identity <- factor(
+  so$cluster_identity,
+  levels = rev(cluster_levels)
+)
+
+# Keep only genes present in the object
+valid_goi <- goi[goi %in% rownames(so)]
+if (length(valid_goi) == 0) {
+  stop("None of the genes in 'goi' were found in the Seurat object.")
+}
+
+# Create DotPlot
+p <- DotPlot(
+  so,
+  features = valid_goi,
+  group.by = "cluster_identity",
+  scale = TRUE
+) +
+  RotatedAxis() +
+  scale_color_viridis_c() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major = element_line(color = "grey90")
+  ) +
+  labs(
+    x = "Cluster × timepoint",
+    y = "Gene",
+    color = "Avg. expression (scaled)",
+    size = "% expressing"
+  )
+
+# Save to PDF
+outFile <- paste(
+  output_folder,
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.cluster_top_to_bottom.pdf",
+  sep = ""
+)
+
+pdf(
+  outFile,
+  width = 5,
+  height = 0.6 * length(valid_goi) + 4
+)
+
+print(p)
+dev.off()
+
+
+#################### DotPlot: all GOI, ordered by timepoint ####################
 
 # Seurat object
 so <- so_mandible_E9.5_E10.5_E11.5_integrated
@@ -855,7 +1015,7 @@ p <- DotPlot(
 # Save to PDF
 outFile <- paste(
   output_folder,
-  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.by.cluster.and.timepoint.pdf",
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.by.cluster.and.timepoint_ordered.pdf",
   sep = ""
 )
 
@@ -866,85 +1026,6 @@ pdf(outFile,
 print(p)
 dev.off()
 
-#################### Ordered DotPlot: all GOI (rocket palette) ####################
-
-library(Seurat)
-library(viridis)
-
-# Seurat object
-so <- so_mandible_E9.5_E10.5_E11.5_integrated
-
-# Ensure cluster identities are set
-Idents(so) <- "seurat_clusters"
-
-# Define timepoint order
-sample_order <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
-
-# Create composite cluster × timepoint identity
-so$cluster_identity <- paste0(
-  "Cluster_",
-  Idents(so),
-  "_",
-  so$orig.ident
-)
-
-# Build desired ordering: Cluster 1 (E9.5 → E10.5 → E11.5), Cluster 2, ...
-clusters <- sort(as.numeric(levels(Idents(so))))
-
-cluster_levels <- unlist(
-  lapply(clusters, function(cl) {
-    paste0("Cluster_", cl, "_", sample_order)
-  })
-)
-
-# Apply ordering
-so$cluster_identity <- factor(
-  so$cluster_identity,
-  levels = cluster_levels
-)
-
-# Keep only genes present in the object
-valid_goi <- goi[goi %in% rownames(so)]
-if (length(valid_goi) == 0) {
-  stop("None of the genes in 'goi' were found in the Seurat object.")
-}
-
-# Create DotPlot with rocket palette
-p <- DotPlot(
-  so,
-  features = valid_goi,
-  group.by = "cluster_identity",
-  scale = TRUE          # scale expression per gene
-) +
-  RotatedAxis() +
-  scale_color_viridis_c(option = "rocket") +
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
-    axis.text.y = element_text(size = 10),
-    panel.grid.major = element_line(color = "grey90")
-  ) +
-  labs(
-    x = "Cluster × timepoint",
-    y = "Gene",
-    color = "Avg. expression (scaled)",
-    size = "% expressing"
-  )
-
-# Save to PDF
-outFile <- paste(
-  output_folder,
-  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.by.cluster.and.timepoint.rocket.pdf",
-  sep = ""
-)
-
-pdf(
-  outFile,
-  width = 7,
-  height = 0.5 * length(valid_goi) + 4
-)
-
-print(p)
-dev.off()
 
 ############################ UMAP plots for goi ################################
 
