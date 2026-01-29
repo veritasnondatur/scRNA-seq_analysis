@@ -5488,3 +5488,537 @@ for (pal_name in names(palettes)) {
   
   dev.off()
 } # end palette loop
+
+
+################## PLOTS FOR WALTER BENJAMIN ABBSCHLUSSBERICHT #################
+# Load data
+so_mandible_hindlimb_integrated <- readRDS("/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_hindlimb+mandible_integration/analysis/so_mandible_hindlimb_integrated.rds")
+
+# Set output folder
+output_folder <- "/Users/veralaub/Documents/postdoc/funding/DFG/WalterBenjamin/Abschluss_Bericht/plots/"
+
+# Change the default assay to "SCT"
+DefaultAssay(so_mandible_hindlimb_integrated) <- "SCT"
+
+#Dimplot
+p <- DimPlot(object = so_mandible_hindlimb_integrated,
+             reduction = "umap.integrated",
+             group.by = 'seurat_clusters',
+             label = TRUE)
+outFile <- paste(output_folder, "/integrated_mandible_hindlimb.UMAP.clusters_split.pdf", sep = "")
+pdf(outFile, width = 10, height =10)
+plot(p)
+dev.off()
+
+# Set the desired order of orig.ident
+so_mandible_hindlimb_integrated$orig.ident <- factor(
+  so_mandible_hindlimb_integrated$orig.ident,
+  levels = c("mandible_E10.5",
+             "hindlimb_E10.5", "hindlimb_E11.5",
+             "stylopod_E12.5", "autopod_E12.5", 
+             "hindlimb_E13.5", "autopod_E13.5", 
+             "hindlimb_E15.5")
+)
+
+# Set genes to plot
+goi <- c("Pbx1", "Pbx2", "Pbx3", "Pbx4", "Hand1", "Hand2",                               # TALE-HD and Hand2
+         "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7",         # Hox cluster genes
+         "Hoxa9", "Hoxa10", "Hoxa11", "Hoxa13", "Hoxd13")
+
+### UMAP Plots for goi
+outFile <- paste(output_folder,
+                 "/integrated_mandible_hindlimb.UMAP.goi_Pbx1-4,Hand1-2,Hoxa.orig.ident.pdf", 
+                 sep = "")
+pdf(outFile, width = 40, height = 5)
+# Loop through each gene and check if it exists in the Seurat object
+for (gene in goi) {
+  if (gene %in% rownames(so_mandible_hindlimb_integrated)) {
+    # Plot only if the gene is found in the Seurat object
+    p <- FeaturePlot(so_mandible_hindlimb_integrated, 
+                     features = gene,
+                     reduction = "umap.integrated",
+                     split.by = "orig.ident",
+                     order = TRUE,
+                     pt.size = 2)
+    plot(p)
+  } else {
+    # Print a message for missing genes (optional)
+    message(paste("Gene not found in data: ", gene))
+  }
+}
+
+dev.off()
+
+### Plots for subset of tissues
+library(ggplot2)
+has_ggrastr <- requireNamespace("ggrastr", quietly = TRUE)
+
+# define color palettes and suffixes
+palettes <- list(
+  red    = c("darksalmon", "red", "brown4"),
+  purple  = c("violet", "mediumpurple", "blueviolet"),
+  turquoise   = c("aquamarine", "aquamarine4", "darkslategrey"),
+  pink   = c("azure3", "deeppink1", "deeppink4"),
+  blue   = c("lightskyblue", "steelblue", "midnightblue")
+)
+
+# parameters
+top_quantile <- 0.90    # top 10% of positives
+nonexp_size <- 0.35     
+low_size <- 0.7         
+high_size <- 1.6        
+grey_col <- "grey80"
+
+# subset of interest
+subset_levels <- c("mandible_E10.5",
+                   "hindlimb_E10.5", "hindlimb_E11.5", "stylopod_E12.5",
+                   "autopod_E12.5", "hindlimb_E13.5", "autopod_E13.5", 
+                   "hindlimb_E15.5")
+
+# compute a PDF width that scales with number of samples (adjust multiplier as needed)
+n_samples <- length(subset_levels)
+pdf_width <- max(10, n_samples * 3.5)  # ~3.5 inches per sample; adjust to taste
+pdf_height <- 5
+
+for (pal_name in names(palettes)) {
+  palette_cols <- palettes[[pal_name]]
+  
+  outFile <- file.path(
+    output_folder,
+    paste0("integrated_mandible_hindlimb.SUBSET.UMAP.goi_ContrastRaster_", pal_name, ".pdf")
+  )
+  
+  pdf(outFile, width = pdf_width, height = pdf_height)
+  
+  for (gene in goi) {
+    if (!(gene %in% rownames(so))) {
+      message("Gene not found in data: ", gene)
+      next
+    }
+    
+    emb <- Embeddings(so, "umap.integrated")
+    fetch <- FetchData(so, vars = c(gene, "orig.ident"))
+    
+    # build df, keep orig.ident as character first, then filter, then set factor with desired order
+    df <- data.frame(
+      cell = rownames(fetch),
+      UMAP_1 = emb[rownames(fetch), 1],
+      UMAP_2 = emb[rownames(fetch), 2],
+      expr = as.numeric(fetch[, gene]),
+      orig.ident = as.character(fetch[, "orig.ident"]),
+      stringsAsFactors = FALSE
+    )
+    
+    # keep only requested subset_levels
+    df <- df[df$orig.ident %in% subset_levels, , drop = FALSE]
+    
+    # if no cells for this gene in subset, skip with a message
+    if (nrow(df) == 0) {
+      message("No cells for gene ", gene, " in chosen subset. Skipping.")
+      next
+    }
+    
+    # enforce factor order (this will keep facets in the order subset_levels,
+    # and drop any levels from subset_levels that aren't present in df automatically)
+    df$orig.ident <- factor(df$orig.ident, levels = subset_levels)
+    
+    # split non / low / high (recomputed per gene)
+    non_idx <- which(df$expr == 0 | is.na(df$expr))
+    pos_idx <- which(df$expr > 0)
+    
+    if (length(pos_idx) == 0) {
+      qtop <- NA
+    } else {
+      qtop <- as.numeric(quantile(df$expr[pos_idx], probs = top_quantile, na.rm = TRUE))
+    }
+    
+    if (is.na(qtop) || qtop == 0) {
+      low_idx <- integer(0)
+      high_idx <- pos_idx
+    } else {
+      low_idx <- which(df$expr > 0 & df$expr <= qtop)
+      high_idx <- which(df$expr > qtop)
+      if (length(high_idx) == 0 && length(pos_idx) >= 1) {
+        qtop2 <- as.numeric(quantile(df$expr[pos_idx], probs = 0.75, na.rm = TRUE))
+        low_idx <- which(df$expr > 0 & df$expr <= qtop2)
+        high_idx <- which(df$expr > qtop2)
+      }
+    }
+    
+    # always produce these df pieces (may be zero-row data.frames)
+    df_non  <- df[non_idx, , drop = FALSE]
+    df_low  <- df[low_idx, , drop = FALSE]
+    df_high <- df[high_idx, , drop = FALSE]
+    
+    # build plot (use df as base to ensure facet variable is present somewhere)
+    p <- ggplot(df, aes(x = UMAP_1, y = UMAP_2)) +
+      # Non-expressors (grey)
+      (if (nrow(df_non) > 0) {
+        if (has_ggrastr) ggrastr::geom_point_rast(
+          data = df_non, aes(x = UMAP_1, y = UMAP_2),
+          color = grey_col, size = nonexp_size, raster.dpi = 150
+        ) else geom_point(
+          data = df_non, aes(x = UMAP_1, y = UMAP_2),
+          color = grey_col, size = nonexp_size
+        )
+      } else NULL) +
+      # Low expressors (color by expr)
+      (if (nrow(df_low) > 0) {
+        if (has_ggrastr) ggrastr::geom_point_rast(
+          data = df_low, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = low_size, raster.dpi = 150
+        ) else geom_point(
+          data = df_low, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = low_size
+        )
+      } else NULL) +
+      # High expressors (color by expr, plotted last to be on top)
+      (if (nrow(df_high) > 0) {
+        if (has_ggrastr) ggrastr::geom_point_rast(
+          data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = high_size, raster.dpi = 150
+        ) else geom_point(
+          data = df_high, aes(x = UMAP_1, y = UMAP_2, color = expr),
+          size = high_size
+        )
+      } else NULL) +
+      facet_wrap(~ orig.ident, nrow = 1, drop = TRUE) +
+      scale_color_gradientn(colors = palette_cols, na.value = palette_cols[1]) +
+      ggtitle(gene) +
+      theme_minimal() +
+      labs(x = "UMAP_1", y = "UMAP_2") +
+      theme(
+        strip.text = element_text(size = 12),
+        legend.position = "right",
+        plot.title = element_text(hjust = 0.5, size = 12),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        axis.line = element_line(color = "black", linewidth = 0.6),
+        panel.grid = element_blank()
+      ) +
+      guides(color = guide_colorbar(title = "Expression"))
+    
+    print(p)
+  } # end gene loop
+  
+  dev.off()
+} # end palette loop
+
+#################### DotPlot: GOI by orig.ident ####################
+
+library(Seurat)
+library(viridis)
+
+# Load data
+so_mandible_hindlimb_integrated <- readRDS("/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_hindlimb+mandible_integration/analysis/so_mandible_hindlimb_integrated.rds")
+
+# All mouse Hox genes (Hoxa–d clusters)
+goi <- c(
+  # Pbx and Hand genes
+  "Pbx1", "Pbx2", "Pbx3", "Pbx4", "Hand1", "Hand2",
+  
+  # Hoxa cluster
+  "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7",
+  "Hoxa9", "Hoxa10", "Hoxa11", "Hoxa13",
+  
+  # Hoxb cluster
+  "Hoxb1", "Hoxb2", "Hoxb3", "Hoxb4", "Hoxb5", "Hoxb6", "Hoxb7",
+  "Hoxb8", "Hoxb9", "Hoxb13",
+  
+  # Hoxc cluster
+  "Hoxc4", "Hoxc5", "Hoxc6", "Hoxc8", "Hoxc9",
+  "Hoxc10", "Hoxc11", "Hoxc12", "Hoxc13",
+  
+  # Hoxd cluster
+  "Hoxd1", "Hoxd3", "Hoxd4", "Hoxd8",
+  "Hoxd9", "Hoxd10", "Hoxd11", "Hoxd12", "Hoxd13"
+)
+
+# Seurat object
+so <- so_mandible_hindlimb_integrated
+
+# Ensure identities are set (not strictly required for DotPlot, but safe)
+Idents(so) <- "orig.ident"
+
+# Explicitly set orig.ident order (as you defined)
+so$orig.ident <- factor(
+  so$orig.ident,
+  levels = c(
+    "mandible_E9.5", "mandible_E10.5", "mandible_E11.5",
+    "hindlimb_E10.5", "hindlimb_E11.5",
+    "stylopod_zeugopod_E12.5", "stylopod_E12.5", "autopod_E12.5",
+    "hindlimb_E13.5", "autopod_E13.5",
+    "hindlimb_E15.5", "hindlimb_E18.5"
+  )
+)
+
+# Keep only genes present in the object
+valid_goi <- goi[goi %in% rownames(so)]
+if (length(valid_goi) == 0) {
+  stop("None of the genes in 'goi' were found in the Seurat object.")
+}
+
+# Create DotPlot
+p <- DotPlot(
+  so,
+  features = valid_goi,
+  group.by = "orig.ident",
+  scale = TRUE
+) +
+  coord_flip() +
+  scale_color_viridis_c() +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 9
+    ),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major = element_line(color = "grey90")
+  ) +
+  labs(
+    x = "Gene",
+    y = "Tissue / Developmental stage",
+    color = "Avg. expression (scaled)",
+    size = "% expressing"
+  )
+
+# Save to PDF
+outFile <- paste(
+  output_folder,
+  "/integrated_mandible_hindlimb.Dotplot.goi_Pbx1-4,Hand1-2,Hox.orig.ident.pdf",
+  sep = ""
+)
+
+pdf(
+  outFile,
+  width = 0.1 * length(valid_goi) + 4,
+  height = 10
+)
+
+print(p)
+dev.off()
+
+#################### DotPlot: GOI by Cluster × orig.ident ####################
+
+library(Seurat)
+library(viridis)
+library(ggplot2)
+
+# -------------------------------------------------------------------------
+# Load data
+# -------------------------------------------------------------------------
+so <- readRDS(
+  "/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_hindlimb+mandible_integration/analysis/so_mandible_hindlimb_integrated.rds"
+)
+
+# -------------------------------------------------------------------------
+# Set desired order of orig.ident
+# -------------------------------------------------------------------------
+so$orig.ident <- factor(
+  so$orig.ident,
+  levels = c(
+    "mandible_E9.5", "mandible_E10.5", "mandible_E11.5",
+    "hindlimb_E10.5", "hindlimb_E11.5",
+    "stylopod_zeugopod_E12.5", "stylopod_E12.5", "autopod_E12.5",
+    "hindlimb_E13.5", "autopod_E13.5",
+    "hindlimb_E15.5"
+  )
+)
+
+# -------------------------------------------------------------------------
+# Genes of interest (Pbx, Hand, all mouse Hox genes)
+# -------------------------------------------------------------------------
+goi <- c(
+  # Pbx and Hand genes
+  "Pbx1", "Pbx2", "Pbx3", "Pbx4", "Hand1", "Hand2",
+  
+  # Hoxa
+  "Hoxa1", "Hoxa2", "Hoxa3", "Hoxa4", "Hoxa5", "Hoxa6", "Hoxa7",
+  "Hoxa9", "Hoxa10", "Hoxa11", "Hoxa13",
+  
+  # Hoxd
+  "Hoxd1", "Hoxd3", "Hoxd4", "Hoxd8",
+  "Hoxd9", "Hoxd10", "Hoxd11", "Hoxd12", "Hoxd13"
+)
+
+# Keep only genes present in the object
+valid_goi <- goi[goi %in% rownames(so)]
+if (length(valid_goi) == 0) {
+  stop("None of the genes in 'goi' were found in the Seurat object.")
+}
+
+# -------------------------------------------------------------------------
+# Create composite identity: cluster × orig.ident
+# -------------------------------------------------------------------------
+# Make sure clustering exists
+if (!"seurat_clusters" %in% colnames(so@meta.data)) {
+  stop("No 'seurat_clusters' found in Seurat object metadata.")
+}
+
+so$cluster_origident <- paste0(
+  "Cluster_", so$seurat_clusters, "_", so$orig.ident
+)
+
+# Order by cluster first, then orig.ident
+so$cluster_origident <- factor(
+  so$cluster_origident,
+  levels = unique(
+    so$cluster_origident[order(so$seurat_clusters, so$orig.ident)]
+  )
+)
+
+# -------------------------------------------------------------------------
+# DotPlot
+# -------------------------------------------------------------------------
+p <- DotPlot(
+  so,
+  features = valid_goi,
+  group.by = "cluster_origident",
+  scale = TRUE
+) +
+  coord_flip() +
+  scale_color_viridis_c(option = "mako", direction = -1) +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 6
+    ),
+    axis.text.y = element_text(size = 8),
+    panel.grid.major = element_line(color = "grey90"),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Gene",
+    y = "Cluster × tissue / developmental stage",
+    color = "Avg. expression (scaled)",
+    size = "% expressing"
+  )
+
+# -------------------------------------------------------------------------
+# Save to PDF
+# -------------------------------------------------------------------------
+outFile <- paste(
+  output_folder,
+  "/integrated_mandible_hindlimb.Dotplot.Pbx-Hand-Hox.cluster_by_orig.ident.pdf",
+  sep = ""
+)
+
+pdf(
+  outFile,
+  width  = 0.3 * length(valid_goi) + 4,
+  height = 0.07 * length(levels(so$cluster_origident)) + 2
+)
+
+print(p)
+dev.off()
+
+################################################################################
+############################### MARKER ANALYSIS ################################
+# Load data
+so_mandible_hindlimb_integrated <- readRDS("/Users/veralaub/Documents/postdoc/bioinformatics/data/scRNA-seq/scRNA-seq_hindlimb+mandible_integration/analysis/so_mandible_hindlimb_integrated.rds")
+
+# Set output folder
+output_folder <- "/Users/veralaub/Documents/postdoc/funding/DFG/WalterBenjamin/Abschluss_Bericht/plots/"
+
+# Change the default assay to "SCT"
+DefaultAssay(so_mandible_hindlimb_integrated) <- "SCT"
+
+# Check memory usage before and after merge (to monitor Error "vector memory limit of 18.0 Gb reached, see mem.maxVSize()")
+pryr::mem_used()
+
+## Identify top 100 markers + all per cluster
+# Correcting SCT counts before running FindAllMarkers
+so_mandible_hindlimb_integrated <- PrepSCTFindMarkers(so_mandible_hindlimb_integrated,
+                                                              assay = "SCT", 
+                                                              verbose = TRUE)
+markers <- FindAllMarkers(so_mandible_hindlimb_integrated,
+                          min.pct = 0.1,
+                          test.use = "wilcox")
+
+# View markers for all clusters
+marker_table <- table(markers$cluster)  # Shows the number of markers for each cluster
+
+# Show markers for the first few clusters
+cluster_ids <- unique(so_mandible_hindlimb_integrated$seurat_clusters)   # Get unique cluster identities
+num_clusters <- length(cluster_ids)   # Count the number of unique clusters
+
+# Loop over each cluster to extract and print top 25 markers
+for (cluster in cluster_ids) {
+  # Extract the top 25 markers for this cluster
+  top_markers <- head(markers[markers$cluster == cluster, ], 100)  # Get top 25 markers for the current cluster
+  # Print the top 20 markers for the current cluster
+  cat("Top 100 markers for cluster ", cluster, " are: \n", sep = "")
+  # Print the gene names (marker genes) for the current cluster
+  print(top_markers$gene)   # Assuming 'gene' is the column containing marker gene names
+  cat("\n")  # Add a line break between clusters
+}
+
+# Save the marker list to a CSV file
+write.csv(markers, file = "/Users/veralaub/Documents/postdoc/funding/DFG/WalterBenjamin/Abschluss_Bericht/plots/so_mandible_hindlimb_integrated_markers_by_cluster.csv", row.names = TRUE)
+
+
+#################### GO term analysis using clusterProfiler ####################
+
+# Get unique cluster IDs
+cluster_ids <- unique(so_mandible_hindlimb_integrated$seurat_clusters)
+
+# Initialize an empty list to store top 100 markers per cluster
+top100_markers_list <- list()
+
+# Loop over clusters
+for (cluster in cluster_ids) {
+  
+  # Extract top 100 markers for the current cluster
+  top_markers <- head(markers[markers$cluster == cluster, ], 100)
+  
+  # Store only the gene names in the list, using cluster ID as name
+  top100_markers_list[[as.character(cluster)]] <- top_markers$gene
+  
+  # Optional: print them for verification
+  cat("Top 100 markers for cluster", cluster, ":\n")
+  print(top_markers$gene)
+  cat("\n")
+}
+
+# Use clusterProfiler for GO term analysis/cluster definition
+library(clusterProfiler)
+library(org.Mm.eg.db)
+
+for (cluster in names(top100_markers_list)) {
+  genes <- top100_markers_list[[cluster]]
+  
+  # Convert SYMBOL to ENTREZID
+  gene_df <- bitr(genes, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Mm.eg.db")
+  entrez_genes <- gene_df$ENTREZID
+  
+  # GO enrichment
+  ego <- enrichGO(
+    gene = entrez_genes,
+    OrgDb = org.Mm.eg.db,
+    ont = "BP",
+    pAdjustMethod = "BH",
+    pvalueCutoff = 0.05,
+    readable = TRUE
+  )
+  
+  # Optional: save results to a file per cluster
+  write.csv(as.data.frame(ego), file = paste0("/Users/veralaub/Documents/postdoc/funding/DFG/WalterBenjamin/Abschluss_Bericht/plots/so_mandible_hindlimb_integrated_GO_cluster_", cluster, ".csv"), row.names = FALSE)
+}
+
+###### Renaming clusters according to GO term analysis of marker gene expression
+
+# Example mapping: cluster ID -> new name
+new_cluster_names <- c(
+  "1" = "",
+  "2" = "",
+  "3" = "",
+  "4" = "",
+  "5" = "",
+  "6" = "",
+  "7" = "",
+  "8" = ""
+)
