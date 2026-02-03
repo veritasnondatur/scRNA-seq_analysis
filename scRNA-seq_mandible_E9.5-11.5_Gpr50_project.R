@@ -922,6 +922,7 @@ for (cluster in cluster_ids) {
 # Save the marker list to a CSV file
 write.csv(markers, file = "~/Documents/postdoc/collaboration/Pauline/Gpr50_project/results/mandible_E9.5_E10.5_E11.5_integrated_markers_by_cluster.csv", row.names = TRUE)
 
+
 #################### GO term analysis using clusterProfiler ####################
 
 # Get unique cluster IDs
@@ -971,6 +972,7 @@ for (cluster in names(top100_markers_list)) {
 }
 
 ###### Renaming clusters according to GO term analysis of marker gene expression
+### Still ongoing (as of 02/03/2026)
 
 # Example mapping: cluster ID -> new name
 new_cluster_names <- c(
@@ -986,3 +988,8 @@ new_cluster_names <- c(
   "10" = "",
   "11" = ""
 )
+
+################################################################################
+# Within-stage differential expression analysis, comparing Gpr50⁺ vs Gpr50⁻ cells 
+# separately for E9.5, E10.5, and E11.5
+
