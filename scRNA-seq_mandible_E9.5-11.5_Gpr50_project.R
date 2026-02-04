@@ -682,7 +682,7 @@ so_mandible_E9.5_E10.5_E11.5_integrated <- readRDS("~/Documents/postdoc/collabor
 output_folder <- "~/Documents/postdoc/collaboration/Pauline/Gpr50_project/results/"
 
 # Define genes of interest (goi)
-goi <- c("Gpr50", "Hand2", "Dlx6")
+goi <- c("Gpr50", "Hand2", "Dlx6", "Pcsk1n")
 
 
 ########################### Violin plots per dataset ###########################
@@ -992,4 +992,276 @@ new_cluster_names <- c(
 ################################################################################
 # Within-stage differential expression analysis, comparing Gpr50⁺ vs Gpr50⁻ cells 
 # separately for E9.5, E10.5, and E11.5
+
+# Prepare the Seurat object
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+
+DefaultAssay(so) <- "SCT"
+so <- PrepSCTFindMarkers(so, verbose = TRUE)
+
+
+# Define Gpr50 positivity
+so$Gpr50_status <- ifelse(
+  GetAssayData(so, layer = "data")["Gpr50", ] > 0,
+  "Gpr50_pos",
+  "Gpr50_neg"
+)
+
+so$Gpr50_status <- factor(
+  so$Gpr50_status,
+  levels = c("Gpr50_neg", "Gpr50_pos")
+)
+
+
+# Differential expression per developmental stage
+run_gpr50_DE <- function(seurat_obj, stage) {
+  
+  message("Running DE for ", stage)
+  
+  so_sub <- subset(
+    seurat_obj,
+    subset = orig.ident == stage
+  )
+  
+  Idents(so_sub) <- "Gpr50_status"
+  
+  markers <- FindMarkers(
+    so_sub,
+    ident.1 = "Gpr50_pos",
+    ident.2 = "Gpr50_neg",
+    test.use = "wilcox",
+    min.pct = 0.1,
+    logfc.threshold = 0.25
+  )
+  
+  markers$gene <- rownames(markers)
+  markers$stage <- stage
+  
+  return(markers)
+}
+
+
+# Run for all stages
+stages <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+gpr50_markers <- lapply(stages, function(s) run_gpr50_DE(so, s))
+gpr50_markers <- bind_rows(gpr50_markers)
+
+
+# Save DE results (logFC + FDR)
+write.csv(
+  gpr50_markers,
+  file = paste0(
+    output_folder,
+    "/Gpr50_pos_vs_neg.DE.by_stage.csv"
+  ),
+  row.names = FALSE
+)
+
+
+# Sanity-check violin plots: Gpr50+ vs Gpr50−, split by stage
+# Select top genes to visualize
+genes_to_plot <- head(top_genes, 50)
+
+outFile <- paste0(
+  output_folder,
+  "/Gpr50_sanitycheck.Violin.top50_genes.by_stage.pdf"
+)
+
+pdf(
+  outFile,
+  width  = 18,
+  height = 1 * length(genes_to_plot) + 4
+)
+
+p <- VlnPlot(
+  so,
+  features = genes_to_plot,
+  group.by = "Gpr50_status",
+  split.by = "orig.ident",
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE
+) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 10)
+  ) +
+  labs(
+    x = "Scaled expression",
+    y = "Gene",
+    title = "Top Gpr50⁺-enriched genes (sanity check)"
+  )
+
+print(p)
+dev.off()
+
+
+## Violin plots of genes sorted by chronological order
+library(dplyr)
+library(Seurat)
+
+# Reorder top_genes chronologically by stage of enrichment
+genes_chron_order <- gpr50_markers %>%
+  filter(p_val_adj < 0.05, avg_log2FC > 0.5) %>%
+  group_by(stage) %>%
+  slice_max(order_by = avg_log2FC, n = 20) %>%   # same top genes selection
+  ungroup() %>%
+  arrange(factor(stage, levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5"))) %>%
+  pull(gene) %>%
+  unique()
+
+# Keep only genes present in Seurat object
+genes_chron_order <- genes_chron_order[genes_chron_order %in% rownames(so)]
+
+# Now plot the violin, genes in chronological order
+pdf(
+  paste0(output_folder, "/Gpr50_sanitycheck.Violin.top_genes_chron_order.pdf"),
+  width  = 18,
+  height = 1 * length(genes_chron_order) + 4
+)
+
+VlnPlot(
+  so,
+  features = genes_chron_order,
+  group.by = "Gpr50_status",
+  split.by = "orig.ident",
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE
+) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 10)
+  ) +
+  labs(
+    x = "Scaled expression",
+    y = "Gene",
+    title = "Top Gpr50⁺-enriched genes (chronological order)"
+  )
+
+dev.off()
+
+
+################## Heatmap of top enriched genes per stage ##################
+# Heatmap, stratified by Gpr50 status and stage
+
+# Ensure correct assay
+DefaultAssay(so) <- "SCT"
+
+# Ensure stage order (left → right)
+so$orig.ident <- factor(
+  so$orig.ident,
+  levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+)
+
+# Sanity check: Gpr50_status must already exist
+table(so$Gpr50_status)
+# should show Gpr50_pos / Gpr50_neg
+
+# Create composite grouping: stage × Gpr50 status
+so$stage_Gpr50 <- paste0(
+  so$orig.ident, "_", so$Gpr50_status
+)
+
+# Explicit ordering: stage first, then Gpr50− → Gpr50+
+so$stage_Gpr50 <- factor(
+  so$stage_Gpr50,
+  levels = c(
+    "mandible_E9.5_Gpr50_neg", "mandible_E9.5_Gpr50_pos",
+    "mandible_E10.5_Gpr50_neg", "mandible_E10.5_Gpr50_pos",
+    "mandible_E11.5_Gpr50_neg", "mandible_E11.5_Gpr50_pos"
+  )
+)
+
+# Select top enriched genes per stage (from your DE results)
+top_genes <- gpr50_markers %>%
+  filter(p_val_adj < 0.05, avg_log2FC > 0.5) %>%
+  group_by(stage) %>%
+  slice_max(order_by = avg_log2FC, n = 20) %>%
+  pull(gene) %>%
+  unique()
+
+# Keep only genes present
+top_genes <- top_genes[top_genes %in% rownames(so)]
+
+# Plot heatmap
+pdf(
+  paste0(
+    output_folder,
+    "/Gpr50_top_enriched_genes.Heatmap.by_stage_and_Gpr50_status.pdf"
+  ),
+  width = 14,   # wider to avoid clipping
+  height = 0.35 * length(top_genes) + 4
+)
+
+DoHeatmap(
+  so,
+  features = top_genes,
+  group.by = "stage_Gpr50"
+) +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    ),
+    plot.margin = margin(
+      t = 10,
+      r = 80,   # 👈 critical: prevents last label cutoff
+      b = 10,
+      l = 10
+    )
+  ) +
+  labs(
+    title = "Top genes enriched in Gpr50⁺ cells\nstratified by developmental stage",
+    fill = "Scaled\nexpression"   # legend title
+  )
+
+dev.off()
+
+
+
+# DotPlot (stage × Gpr50 status)
+# Explicit ordering: stage first, then Gpr50− → Gpr50+
+so$stage_Gpr50 <- factor(
+  so$stage_Gpr50,
+  levels = c(
+    "mandible_E9.5_Gpr50_neg", "mandible_E9.5_Gpr50_pos",
+    "mandible_E10.5_Gpr50_neg", "mandible_E10.5_Gpr50_pos",
+    "mandible_E11.5_Gpr50_neg", "mandible_E11.5_Gpr50_pos"
+  )
+)
+
+Idents(so) <- "stage_Gpr50"
+
+pdf(
+  paste0(output_folder, "/Gpr50_top_enriched_genes.DotPlot.by_stage_and_Gpr50_status.pdf"),
+  width = 10,
+  height = 20
+)
+
+DotPlot(
+  so,
+  features = top_genes,
+  scale = TRUE
+) +
+  coord_flip() +
+  scale_color_viridis_c(option = "cividis") +
+  labs(
+    x = "Gene",
+    y = "Stage × Gpr50 status",
+    color = "Avg. expression",
+    size = "% expressing"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+dev.off()
+
 
