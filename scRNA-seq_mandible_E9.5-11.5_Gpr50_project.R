@@ -1334,7 +1334,7 @@ for (stage_i in stages) {
       x = "SCT-normalized expression",
       y = "Gene",
       title = paste0(
-        "Top 50 Gpr50+ enriched genes — ",
+        "Top 50 enriched genes in Gpr50+ cells in ",
         stage_i
       )
     )
@@ -1446,7 +1446,7 @@ for (stage_i in stages) {
       x = 'SCT-normalized expression',
       y = 'Gene',
       title = paste0(
-        'Top 50 Gpr50+ enriched genes in ',
+        'Top 50 enriched genes in Gpr50+ cells',
         stage_i,
         ' (shown across all stages)'
       )
