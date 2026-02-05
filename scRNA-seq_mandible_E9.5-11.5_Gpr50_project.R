@@ -993,12 +993,19 @@ new_cluster_names <- c(
 # Within-stage differential expression analysis, comparing Gpr50⁺ vs Gpr50⁻ cells 
 # separately for E9.5, E10.5, and E11.5
 
+# Load integrated Dataset
+so_mandible_E9.5_E10.5_E11.5_integrated <- readRDS("~/Documents/postdoc/collaboration/Pauline/mandible_E9.5-11.5_integration/so_mandible_E9.5_E10.5_E11.5_integrated.rds")
+
+# Define output folder (for results)
+output_folder <- "~/Documents/postdoc/collaboration/Pauline/Gpr50_project/results/"
+
 # Prepare the Seurat object
 library(Seurat)
 library(dplyr)
 library(ggplot2)
 library(patchwork)
 
+# Make new Seurat object for plots
 so <- so_mandible_E9.5_E10.5_E11.5_integrated
 
 DefaultAssay(so) <- "SCT"
@@ -1064,91 +1071,7 @@ write.csv(
 )
 
 
-# Sanity-check violin plots: Gpr50+ vs Gpr50−, split by stage
-# Select top genes to visualize
-genes_to_plot <- head(top_genes, 50)
-
-outFile <- paste0(
-  output_folder,
-  "/Gpr50_sanitycheck.Violin.top50_genes.by_stage.pdf"
-)
-
-pdf(
-  outFile,
-  width  = 18,
-  height = 1 * length(genes_to_plot) + 4
-)
-
-p <- VlnPlot(
-  so,
-  features = genes_to_plot,
-  group.by = "Gpr50_status",
-  split.by = "orig.ident",
-  pt.size = 0,
-  stack = TRUE,
-  flip = TRUE
-) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    axis.text.y = element_text(size = 10)
-  ) +
-  labs(
-    x = "Scaled expression",
-    y = "Gene",
-    title = "Top Gpr50⁺-enriched genes (sanity check)"
-  )
-
-print(p)
-dev.off()
-
-
-## Violin plots of genes sorted by chronological order
-library(dplyr)
-library(Seurat)
-
-# Reorder top_genes chronologically by stage of enrichment
-genes_chron_order <- gpr50_markers %>%
-  filter(p_val_adj < 0.05, avg_log2FC > 0.5) %>%
-  group_by(stage) %>%
-  slice_max(order_by = avg_log2FC, n = 20) %>%   # same top genes selection
-  ungroup() %>%
-  arrange(factor(stage, levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5"))) %>%
-  pull(gene) %>%
-  unique()
-
-# Keep only genes present in Seurat object
-genes_chron_order <- genes_chron_order[genes_chron_order %in% rownames(so)]
-
-# Now plot the violin, genes in chronological order
-pdf(
-  paste0(output_folder, "/Gpr50_sanitycheck.Violin.top_genes_chron_order.pdf"),
-  width  = 18,
-  height = 1 * length(genes_chron_order) + 4
-)
-
-VlnPlot(
-  so,
-  features = genes_chron_order,
-  group.by = "Gpr50_status",
-  split.by = "orig.ident",
-  pt.size = 0,
-  stack = TRUE,
-  flip = TRUE
-) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    axis.text.y = element_text(size = 10)
-  ) +
-  labs(
-    x = "Scaled expression",
-    y = "Gene",
-    title = "Top Gpr50⁺-enriched genes (chronological order)"
-  )
-
-dev.off()
-
-
-################## Heatmap of top enriched genes per stage ##################
+### Heatmap of top enriched genes per stage
 # Heatmap, stratified by Gpr50 status and stage
 
 # Ensure correct assay
@@ -1227,8 +1150,7 @@ DoHeatmap(
 dev.off()
 
 
-
-# DotPlot (stage × Gpr50 status)
+### DotPlot (stage × Gpr50 status)
 # Explicit ordering: stage first, then Gpr50− → Gpr50+
 so$stage_Gpr50 <- factor(
   so$stage_Gpr50,
@@ -1264,4 +1186,273 @@ DotPlot(
 
 dev.off()
 
+########## Violin plots
+# Sanity-check violin plots: Gpr50+ vs Gpr50−, split by stage
+# Select top genes to visualize
+genes_to_plot <- head(top_genes, 50)
 
+outFile <- paste0(
+  output_folder,
+  "/Gpr50_sanitycheck.Violin.top50_genes.by_stage.pdf"
+)
+
+pdf(
+  outFile,
+  width  = 18,
+  height = 1 * length(genes_to_plot) + 4
+)
+
+p <- VlnPlot(
+  so,
+  features = genes_to_plot,
+  group.by = "Gpr50_status",
+  split.by = "orig.ident",
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE
+) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 10)
+  ) +
+  labs(
+    x = "Scaled expression",
+    y = "Gene",
+    title = "Top Gpr50⁺-enriched genes (sanity check)"
+  )
+
+print(p)
+dev.off()
+
+## ===============================
+## Violin plots per stage (E9.5 / E10.5 / E11.5)
+## ===============================
+
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+
+## -------------------------------
+## Inputs you already have
+## -------------------------------
+# so_mandible_E9.5_E10.5_E11.5_integrated
+# gpr50_markers
+# output_folder
+
+## -------------------------------
+## Load integrated object ONCE
+## -------------------------------
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+DefaultAssay(so) <- "SCT"
+
+## -------------------------------
+## Ensure Gpr50_status exists
+## (safe even if it already does)
+## -------------------------------
+if (!"Gpr50_status" %in% colnames(so@meta.data)) {
+  message("Adding Gpr50_status metadata")
+  
+  so$Gpr50_status <- ifelse(
+    GetAssayData(so, assay = "SCT", layer = "data")["Gpr50", ] > 0,
+    "Gpr50_pos",
+    "Gpr50_neg"
+  )
+  
+  so$Gpr50_status <- factor(
+    so$Gpr50_status,
+    levels = c("Gpr50_neg", "Gpr50_pos")
+  )
+}
+
+## Quick sanity check
+print(table(so$Gpr50_status, useNA = "ifany"))
+
+## -------------------------------
+## Stages in chronological order
+## -------------------------------
+stages <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+## -------------------------------
+## Open PDF
+## -------------------------------
+pdf(
+  file   = paste0(output_folder,
+                  "/Gpr50_sanitycheck.Violin.top50_genes.by_stage.pdf"),
+  width  = 18,
+  height = 60   # room for 50 stacked violins
+)
+
+## -------------------------------
+## Loop over stages
+## -------------------------------
+for (stage_i in stages) {
+  
+  message("Plotting stage: ", stage_i)
+  
+  ## ---- subset Seurat object to this dataset ONLY
+  so_stage <- subset(
+    so,
+    subset = orig.ident == stage_i
+  )
+  
+  ## ---- select top 50 DE genes for this stage
+  top_genes_stage <- gpr50_markers %>%
+    filter(
+      stage == stage_i,
+      p_val_adj < 0.05,
+      avg_log2FC > 0.5
+    ) %>%
+    slice_max(order_by = avg_log2FC, n = 50) %>%
+    pull(gene)
+  
+  ## ---- keep genes present in the object
+  top_genes_stage <- intersect(
+    top_genes_stage,
+    rownames(so_stage)
+  )
+  
+  if (length(top_genes_stage) == 0) {
+    message("No genes to plot for ", stage_i)
+    next
+  }
+  
+  ## ---- violin plot
+  p <- VlnPlot(
+    so_stage,
+    features = top_genes_stage,
+    group.by = "Gpr50_status",
+    pt.size  = 0,
+    stack    = TRUE,
+    flip     = TRUE
+  ) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 9),
+      plot.title  = element_text(face = "bold")
+    ) +
+    labs(
+      x = "SCT-normalized expression",
+      y = "Gene",
+      title = paste0(
+        "Top 50 Gpr50+ enriched genes — ",
+        stage_i
+      )
+    )
+  
+  print(p)
+}
+
+dev.off()
+
+
+## ===============================
+## Violin plots: top50 genes per stage
+## shown across ALL stages
+## ===============================
+
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+
+## -------------------------------
+## Input object
+## -------------------------------
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+DefaultAssay(so) <- 'SCT'
+
+## -------------------------------
+## Ensure stage order
+## -------------------------------
+so$orig.ident <- factor(
+  so$orig.ident,
+  levels = c('mandible_E9.5', 'mandible_E10.5', 'mandible_E11.5')
+)
+
+## -------------------------------
+## Ensure Gpr50_status exists
+## -------------------------------
+if (!'Gpr50_status' %in% colnames(so@meta.data)) {
+  so$Gpr50_status <- ifelse(
+    GetAssayData(so, assay = 'SCT', layer = 'data')['Gpr50', ] > 0,
+    'Gpr50_pos',
+    'Gpr50_neg'
+  )
+  so$Gpr50_status <- factor(
+    so$Gpr50_status,
+    levels = c('Gpr50_neg', 'Gpr50_pos')
+  )
+}
+
+## -------------------------------
+## Stages in chronological order
+## -------------------------------
+stages <- c('mandible_E9.5', 'mandible_E10.5', 'mandible_E11.5')
+
+## -------------------------------
+## Output PDF
+## -------------------------------
+pdf(
+  file   = paste0(output_folder,
+                  '/Gpr50_sanitycheck.Violin.top50_genes.by_stage_across_time.pdf'),
+  width  = 18,
+  height = 60
+)
+
+## -------------------------------
+## Loop over stages
+## -------------------------------
+for (stage_i in stages) {
+  
+  message('Plotting genes enriched in: ', stage_i)
+  
+  ## ---- select top 50 genes ENRICHED in this stage
+  top_genes_stage <- gpr50_markers %>%
+    filter(
+      stage == stage_i,
+      p_val_adj < 0.05,
+      avg_log2FC > 0.5
+    ) %>%
+    arrange(desc(avg_log2FC)) %>%
+    slice_head(n = 50) %>%
+    pull(gene)
+  
+  ## ---- keep genes present in object
+  top_genes_stage <- intersect(
+    top_genes_stage,
+    rownames(so)
+  )
+  
+  if (length(top_genes_stage) == 0) {
+    message('No genes to plot for ', stage_i)
+    next
+  }
+  
+  ## ---- violin plot across ALL stages
+  p <- VlnPlot(
+    so,
+    features = top_genes_stage,
+    group.by = 'Gpr50_status',
+    split.by = 'orig.ident',
+    pt.size  = 0,
+    stack    = TRUE,
+    flip     = TRUE
+  ) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 9),
+      plot.title  = element_text(face = 'bold')
+    ) +
+    labs(
+      x = 'SCT-normalized expression',
+      y = 'Gene',
+      title = paste0(
+        'Top 50 Gpr50+ enriched genes in ',
+        stage_i,
+        ' (shown across all stages)'
+      )
+    )
+  
+  print(p)
+}
+
+dev.off()
