@@ -798,6 +798,17 @@ goi <- c("Dgkk", "Hand2", "Dlx6",        # Genes of interest for this study
          "Maf"                           # (Yuan et al., 2020), marker cluster 11 in our analysis
 )
 
+# Define genes of interest (goi), final list for revision (Xu et al., 2019; Yuan et al., 2020; Paulines candidates)
+goi <- c("Dgkk", "Hand1", "Hand2", "Alx1", "Alx3",        # Genes of interest for this study + distal domain markers (Yuan et al., 2020)
+         "Foxf1", "Lhx8", "Etv4",               # (distal-)oral markers (Pauline; Yuan et al., 2020)
+         "Cgnl1", "Maf",                                  # aboral (Pauline; Yuan et al., 2020), markers cluster 10/11 in our analysis
+         "Foxc1",                                         # proximo-aboral (Yuan et al., 2020 cluster 1), marker cluster 2+4 in our analysis
+         "Nbl1", "Pou3f3", "Car2", "Crlf1",               # proximal domain marker genes (Yuan et al., 2020; Pauline); marker cluster 9 in our analysis
+         "Barx1", "Pitx1", "Dlx5", "Dlx6", "Notch2",               # ectomesenchyme (Pauline; Yuan et al., 2020)
+         "Epcam",                                         # Epithelial marker
+         "Bmp4", "Edn1"                                  # markers to address reviewer comment (Pauline))
+)
+
 #################### DotPlot: GOI to define clusters (revision) ###################
 # ================================================
 # FILTER GENES PRESENT IN OBJECT
@@ -828,6 +839,98 @@ p <- DotPlot(
   RotatedAxis() +
   ggtitle("Gene expression (DotPlot)") +
   theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+print(p)
+
+dev.off()
+
+
+# Define genes of interest (goi) for Dgk genes to assess expression across clusters
+goi <- c("Dgka", "Dgkb", "Dgkd", "Dgke", "Dgkeos", "Dgkg", "Dgkh", "Dgki", 
+         "Dgkk", "Dgkq", "Dgkz")
+
+#################### DotPlot: GOI to define clusters (revision) ###################
+# ================================================
+# FILTER GENES PRESENT IN OBJECT
+# ================================================
+goi_present <- goi[goi %in% rownames(so_mandible_E9.5_E10.5_E11.5_integrated)]
+
+missing_genes <- setdiff(goi, goi_present)
+if (length(missing_genes) > 0) {
+  message("Missing genes: ", paste(missing_genes, collapse = ", "))
+}
+
+# ================================================
+# DOTPLOT
+# ================================================
+outFile <- paste(
+  output_folder,
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.Dgk-genes.seurat_clusters.pdf",
+  sep = ""
+)
+
+pdf(outFile, width = 10, height = 5)
+
+p <- DotPlot(
+  so_mandible_E9.5_E10.5_E11.5_integrated,
+  features = goi_present,
+  group.by = "seurat_clusters"
+) +
+  RotatedAxis() +
+  ggtitle("Gene expression (DotPlot)") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+print(p)
+
+dev.off()
+
+#################### Heatmap: Dgk genes across clusters ###################
+
+# ================================================
+# FILTER GENES PRESENT IN OBJECT
+# ================================================
+goi_present <- goi[goi %in% rownames(so_mandible_E9.5_E10.5_E11.5_integrated)]
+
+missing_genes <- setdiff(goi, goi_present)
+if (length(missing_genes) > 0) {
+  message("Missing genes: ", paste(missing_genes, collapse = ", "))
+}
+
+# ================================================
+# OPTIONAL: SET CLUSTER ORDER
+# ================================================
+Idents(so_mandible_E9.5_E10.5_E11.5_integrated) <- "seurat_clusters"
+
+# Example:
+# so_mandible_E9.5_E10.5_E11.5_integrated$seurat_clusters <- factor(
+#   so_mandible_E9.5_E10.5_E11.5_integrated$seurat_clusters,
+#   levels = c("0","1","2","3","4","5")
+# )
+
+# ================================================
+# HEATMAP
+# ================================================
+outFile <- paste(
+  output_folder,
+  "/mandible_E9.5_E10.5_E11.5_integrated.Heatmap.Dgk-genes.seurat_clusters.pdf",
+  sep = ""
+)
+
+pdf(outFile, width = 10, height = 8)
+
+p <- DoHeatmap(
+  object = so_mandible_E9.5_E10.5_E11.5_integrated,
+  features = goi_present,
+  group.by = "seurat_clusters",
+  slot = "scale.data"
+) +
+  ggtitle("Dgk gene expression across clusters") +
+  theme(
+    axis.text.y = element_text(size = 8),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
@@ -904,7 +1007,7 @@ p <- DotPlot(
 # Save to PDF
 outFile <- paste(
   output_folder,
-  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.all_goi.timepoint_top_to_bottom.pdf",
+  "/mandible_E9.5_E10.5_E11.5_integrated.DotPlot.goi_all.timepoint_top_to_bottom.pdf",      # mandible_E9.5_E10.5_E11.5_integrated.DotPlot.Dgk-genes.timepoint_top_to_bottom.pdf"
   sep = ""
 )
 
@@ -1615,3 +1718,735 @@ for (pair in gene_pairs) {
   }
 }
 dev.off()
+
+
+################################################################################
+############################### MARKER ANALYSIS  ###############################
+
+# Change the default assay to "SCT"
+DefaultAssay(so_mandible_E9.5_E10.5_E11.5_integrated) <- "SCT"
+
+## Identify top 100 markers + all per cluster
+# Correcting SCT counts before running FindAllMarkers
+so_mandible_E9.5_E10.5_E11.5_integrated <- PrepSCTFindMarkers(so_mandible_E9.5_E10.5_E11.5_integrated,
+                                                              assay = "SCT", 
+                                                              verbose = TRUE)
+markers <- FindAllMarkers(so_mandible_E9.5_E10.5_E11.5_integrated,
+                          min.pct = 0.1,
+                          test.use = "wilcox")
+
+# View markers for all clusters
+marker_table <- table(markers$cluster)  # Shows the number of markers for each cluster
+
+# Show markers for the first few clusters
+cluster_ids <- unique(so_mandible_E9.5_E10.5_E11.5_integrated$seurat_clusters)   # Get unique cluster identities
+num_clusters <- length(cluster_ids)   # Count the number of unique clusters
+
+# Loop over each cluster to extract and print top 25 markers
+for (cluster in cluster_ids) {
+  # Extract the top 25 markers for this cluster
+  top_markers <- head(markers[markers$cluster == cluster, ], 100)  # Get top 100 markers for the current cluster
+  # Print the top 20 markers for the current cluster
+  cat("Top 100 markers for cluster ", cluster, " are: \n", sep = "")
+  # Print the gene names (marker genes) for the current cluster
+  print(top_markers$gene)   # Assuming 'gene' is the column containing marker gene names
+  cat("\n")  # Add a line break between clusters
+}
+
+# Save the marker list to a CSV file
+write.csv(markers, file = "~/Documents/postdoc/collaboration/Pauline/Dgkk_project/results_for_publication/mandible_E9.5_E10.5_E11.5_integrated_markers_by_cluster.csv", row.names = TRUE)
+
+
+#################### GO term analysis using clusterProfiler ####################
+
+# Get unique cluster IDs
+cluster_ids <- unique(so_mandible_E9.5_E10.5_E11.5_integrated$seurat_clusters)
+
+# Initialize an empty list to store top 100 markers per cluster
+top100_markers_list <- list()
+
+# Loop over clusters
+for (cluster in cluster_ids) {
+  
+  # Extract top 100 markers for the current cluster
+  top_markers <- head(markers[markers$cluster == cluster, ], 100)
+  
+  # Store only the gene names in the list, using cluster ID as name
+  top100_markers_list[[as.character(cluster)]] <- top_markers$gene
+  
+  # Optional: print them for verification
+  cat("Top 100 markers for cluster", cluster, ":\n")
+  print(top_markers$gene)
+  cat("\n")
+}
+
+# Use clusterProfiler for GO term analysis/cluster definition
+library(clusterProfiler)
+library(org.Mm.eg.db)
+
+for (cluster in names(top100_markers_list)) {
+  genes <- top100_markers_list[[cluster]]
+  
+  # Convert SYMBOL to ENTREZID
+  gene_df <- bitr(genes, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Mm.eg.db")
+  entrez_genes <- gene_df$ENTREZID
+  
+  # GO enrichment
+  ego <- enrichGO(
+    gene = entrez_genes,
+    OrgDb = org.Mm.eg.db,
+    ont = "BP",
+    pAdjustMethod = "BH",
+    pvalueCutoff = 0.05,
+    readable = TRUE
+  )
+  
+  # Optional: save results to a file per cluster
+  write.csv(as.data.frame(ego), file = paste0("~/Documents/postdoc/collaboration/Pauline/Gpr50_project/results/GO_cluster_", cluster, ".csv"), row.names = FALSE)
+}
+
+
+################################################################################
+# Within-stage differential expression analysis, comparing Dgkk⁺ vs Dgkk⁻ cells 
+# separately for E9.5, E10.5, and E11.5
+
+# Prepare the Seurat object
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+# Make new Seurat object for plots
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+
+DefaultAssay(so) <- "SCT"
+so <- PrepSCTFindMarkers(so, verbose = TRUE)
+
+
+# Define Dgkk positivity
+so$Dgkk_status <- ifelse(
+  GetAssayData(so, layer = "data")["Dgkk", ] > 0,
+  "Dgkk_pos",
+  "Dgkk_neg"
+)
+
+so$Dgkk_status <- factor(
+  so$Dgkk_status,
+  levels = c("Dgkk_neg", "Dgkk_pos")
+)
+
+
+# Differential expression per developmental stage
+run_Dgkk_DE <- function(seurat_obj, stage) {
+  
+  message("Running DE for ", stage)
+  
+  so_sub <- subset(
+    seurat_obj,
+    subset = orig.ident == stage
+  )
+  
+  Idents(so_sub) <- "Dgkk_status"
+  
+  markers <- FindMarkers(
+    so_sub,
+    ident.1 = "Dgkk_pos",
+    ident.2 = "Dgkk_neg",
+    test.use = "wilcox",
+    min.pct = 0.1,
+    logfc.threshold = 0.25
+  )
+  
+  markers$gene <- rownames(markers)
+  markers$stage <- stage
+  
+  return(markers)
+}
+
+
+# Run for all stages
+stages <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+Dgkk_markers <- lapply(stages, function(s) run_Dgkk_DE(so, s))
+Dgkk_markers <- bind_rows(Dgkk_markers)
+
+
+# Save DE results (logFC + FDR)
+write.csv(
+  Dgkk_markers,
+  file = paste0(
+    output_folder,
+    "/Dgkk_pos_vs_neg.DE.by_stage.csv"
+  ),
+  row.names = FALSE
+)
+
+
+### Heatmap of top enriched genes per stage
+# Heatmap, stratified by Dgkk status and stage
+
+# Ensure correct assay
+DefaultAssay(so) <- "SCT"
+
+# Ensure stage order (left → right)
+so$orig.ident <- factor(
+  so$orig.ident,
+  levels = c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+)
+
+# Sanity check: Dgkk_status must already exist
+table(so$Dgkk_status)
+# should show Dgkk_pos / Dgkk_neg
+
+# Create composite grouping: stage × Dgkk status
+so$stage_Dgkk <- paste0(
+  so$orig.ident, "_", so$Dgkk_status
+)
+
+# Explicit ordering: stage first, then Dgkk− → Dgkk+
+so$stage_Dgkk <- factor(
+  so$stage_Dgkk,
+  levels = c(
+    "mandible_E9.5_Dgkk_neg", "mandible_E9.5_Dgkk_pos",
+    "mandible_E10.5_Dgkk_neg", "mandible_E10.5_Dgkk_pos",
+    "mandible_E11.5_Dgkk_neg", "mandible_E11.5_Dgkk_pos"
+  )
+)
+
+# Select top enriched genes per stage (from your DE results)
+top_genes <- Dgkk_markers %>%
+  filter(p_val_adj < 0.05, avg_log2FC > 0.5) %>%
+  group_by(stage) %>%
+  slice_max(order_by = avg_log2FC, n = 20) %>%
+  pull(gene) %>%
+  unique()
+
+# Keep only genes present
+top_genes <- top_genes[top_genes %in% rownames(so)]
+
+# Plot heatmap
+pdf(
+  paste0(
+    output_folder,
+    "/Dgkk_top_enriched_genes.Heatmap.by_stage_and_Dgkk_status.pdf"
+  ),
+  width = 14,   # wider to avoid clipping
+  height = 0.35 * length(top_genes) + 4
+)
+
+DoHeatmap(
+  so,
+  features = top_genes,
+  group.by = "stage_Dgkk"
+) +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5,
+      size = 10
+    ),
+    plot.margin = margin(
+      t = 10,
+      r = 80,   # 👈 critical: prevents last label cutoff
+      b = 10,
+      l = 10
+    )
+  ) +
+  labs(
+    title = "Top genes enriched in Dgkk⁺ cells\nstratified by developmental stage",
+    fill = "Scaled\nexpression"   # legend title
+  )
+
+dev.off()
+
+
+### DotPlot (stage × Dgkk status)
+# Explicit ordering: stage first, then Dgkk− → Dgkk+
+so$stage_Dgkk <- factor(
+  so$stage_Dgkk,
+  levels = c(
+    "mandible_E9.5_Dgkk_neg", "mandible_E9.5_Dgkk_pos",
+    "mandible_E10.5_Dgkk_neg", "mandible_E10.5_Dgkk_pos",
+    "mandible_E11.5_Dgkk_neg", "mandible_E11.5_Dgkk_pos"
+  )
+)
+
+Idents(so) <- "stage_Dgkk"
+
+pdf(
+  paste0(output_folder, "/Dgkk_top_enriched_genes.DotPlot.by_stage_and_Dgkk_status.pdf"),
+  width = 10,
+  height = 20
+)
+
+DotPlot(
+  so,
+  features = top_genes,
+  scale = TRUE
+) +
+  coord_flip() +
+  scale_color_viridis_c(option = "cividis") +
+  labs(
+    x = "Gene",
+    y = "Stage × Dgkk status",
+    color = "Avg. expression",
+    size = "% expressing"
+  ) +
+  theme(axis.text.x = element_text(angle = 90))
+
+dev.off()
+
+########## Violin plots
+# Sanity-check violin plots: Dgkk+ vs Dgkk−, split by stage
+# Select top genes to visualize
+genes_to_plot <- head(top_genes, 50)
+
+outFile <- paste0(
+  output_folder,
+  "/Dgkk_sanitycheck.Violin.top50_genes.by_stage.pdf"
+)
+
+pdf(
+  outFile,
+  width  = 18,
+  height = 1 * length(genes_to_plot) + 4
+)
+
+p <- VlnPlot(
+  so,
+  features = genes_to_plot,
+  group.by = "Dgkk_status",
+  split.by = "orig.ident",
+  pt.size = 0,
+  stack = TRUE,
+  flip = TRUE
+) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 10)
+  ) +
+  labs(
+    x = "Scaled expression",
+    y = "Gene",
+    title = "Top Dgkk⁺-enriched genes (sanity check)"
+  )
+
+print(p)
+dev.off()
+
+## ===============================
+## Violin plots per stage (E9.5 / E10.5 / E11.5)
+## ===============================
+
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+
+## -------------------------------
+## Inputs you already have
+## -------------------------------
+# so_mandible_E9.5_E10.5_E11.5_integrated
+# Dgkk_markers
+# output_folder
+
+## -------------------------------
+## Load integrated object ONCE
+## -------------------------------
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+DefaultAssay(so) <- "SCT"
+
+## -------------------------------
+## Ensure Dgkk_status exists
+## (safe even if it already does)
+## -------------------------------
+if (!"Dgkk_status" %in% colnames(so@meta.data)) {
+  message("Adding Dgkk_status metadata")
+  
+  so$Dgkk_status <- ifelse(
+    GetAssayData(so, assay = "SCT", layer = "data")["Dgkk", ] > 0,
+    "Dgkk_pos",
+    "Dgkk_neg"
+  )
+  
+  so$Dgkk_status <- factor(
+    so$Dgkk_status,
+    levels = c("Dgkk_neg", "Dgkk_pos")
+  )
+}
+
+## Quick sanity check
+print(table(so$Dgkk_status, useNA = "ifany"))
+
+## -------------------------------
+## Stages in chronological order
+## -------------------------------
+stages <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+## -------------------------------
+## Open PDF
+## -------------------------------
+pdf(
+  file   = paste0(output_folder,
+                  "/Dgkk_sanitycheck.Violin.top50_genes.by_stage.pdf"),
+  width  = 18,
+  height = 60   # room for 50 stacked violins
+)
+
+## -------------------------------
+## Loop over stages
+## -------------------------------
+for (stage_i in stages) {
+  
+  message("Plotting stage: ", stage_i)
+  
+  ## ---- subset Seurat object to this dataset ONLY
+  so_stage <- subset(
+    so,
+    subset = orig.ident == stage_i
+  )
+  
+  ## ---- select top 50 DE genes for this stage
+  top_genes_stage <- Dgkk_markers %>%
+    filter(
+      stage == stage_i,
+      p_val_adj < 0.05,
+      avg_log2FC > 0.5
+    ) %>%
+    slice_max(order_by = avg_log2FC, n = 50) %>%
+    pull(gene)
+  
+  ## ---- keep genes present in the object
+  top_genes_stage <- intersect(
+    top_genes_stage,
+    rownames(so_stage)
+  )
+  
+  if (length(top_genes_stage) == 0) {
+    message("No genes to plot for ", stage_i)
+    next
+  }
+  
+  ## ---- violin plot
+  p <- VlnPlot(
+    so_stage,
+    features = top_genes_stage,
+    group.by = "Dgkk_status",
+    pt.size  = 0,
+    stack    = TRUE,
+    flip     = TRUE
+  ) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 9),
+      plot.title  = element_text(face = "bold")
+    ) +
+    labs(
+      x = "SCT-normalized expression",
+      y = "Gene",
+      title = paste0(
+        "Top 50 enriched genes in Dgkk+ cells in ",
+        stage_i
+      )
+    )
+  
+  print(p)
+}
+
+dev.off()
+
+
+## ===============================
+## Violin plots: top50 genes per stage
+## shown across ALL stages
+## ===============================
+
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+
+## -------------------------------
+## Input object
+## -------------------------------
+so <- so_mandible_E9.5_E10.5_E11.5_integrated
+DefaultAssay(so) <- 'SCT'
+
+## -------------------------------
+## Ensure stage order
+## -------------------------------
+so$orig.ident <- factor(
+  so$orig.ident,
+  levels = c('mandible_E9.5', 'mandible_E10.5', 'mandible_E11.5')
+)
+
+## -------------------------------
+## Ensure Dgkk_status exists
+## -------------------------------
+if (!'Dgkk_status' %in% colnames(so@meta.data)) {
+  so$Dgkk_status <- ifelse(
+    GetAssayData(so, assay = 'SCT', layer = 'data')['Dgkk', ] > 0,
+    'Dgkk_pos',
+    'Dgkk_neg'
+  )
+  so$Dgkk_status <- factor(
+    so$Dgkk_status,
+    levels = c('Dgkk_neg', 'Dgkk_pos')
+  )
+}
+
+## -------------------------------
+## Stages in chronological order
+## -------------------------------
+stages <- c('mandible_E9.5', 'mandible_E10.5', 'mandible_E11.5')
+
+## -------------------------------
+## Output PDF
+## -------------------------------
+pdf(
+  file   = paste0(output_folder,
+                  '/Dgkk_sanitycheck.Violin.top50_genes.by_stage_across_time.pdf'),
+  width  = 18,
+  height = 60
+)
+
+## -------------------------------
+## Loop over stages
+## -------------------------------
+for (stage_i in stages) {
+  
+  message('Plotting genes enriched in: ', stage_i)
+  
+  ## ---- select top 50 genes ENRICHED in this stage
+  top_genes_stage <- Dgkk_markers %>%
+    filter(
+      stage == stage_i,
+      p_val_adj < 0.05,
+      avg_log2FC > 0.5
+    ) %>%
+    arrange(desc(avg_log2FC)) %>%
+    slice_head(n = 50) %>%
+    pull(gene)
+  
+  ## ---- keep genes present in object
+  top_genes_stage <- intersect(
+    top_genes_stage,
+    rownames(so)
+  )
+  
+  if (length(top_genes_stage) == 0) {
+    message('No genes to plot for ', stage_i)
+    next
+  }
+  
+  ## ---- violin plot across ALL stages
+  p <- VlnPlot(
+    so,
+    features = top_genes_stage,
+    group.by = 'Dgkk_status',
+    split.by = 'orig.ident',
+    pt.size  = 0,
+    stack    = TRUE,
+    flip     = TRUE
+  ) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.y = element_text(size = 9),
+      plot.title  = element_text(face = 'bold')
+    ) +
+    labs(
+      x = 'SCT-normalized expression',
+      y = 'Gene',
+      title = paste0(
+        'Top 50 enriched genes in Dgkk+ cells ',
+        stage_i,
+        ' (shown across all stages)'
+      )
+    )
+  
+  print(p)
+}
+
+dev.off()
+
+
+# =====================================================
+# Dgkk GO ANALYSIS — BY STAGE (MANDIBLE E9.5–E11.5)
+# =====================================================
+
+library(Seurat)
+library(dplyr)
+library(clusterProfiler)
+library(org.Mm.eg.db)
+library(ggplot2)
+
+# =========================
+# OUTPUT FOLDER
+# =========================
+output_folder <- "~/Documents/postdoc/collaboration/Pauline/Dgkk_project/results_for_publication/"
+dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
+
+# =========================
+# LOAD DATA
+# =========================
+so <- readRDS("~/Documents/postdoc/collaboration/Pauline/mandible_E9.5-11.5_integration/so_mandible_E9.5_E10.5_E11.5_integrated.rds")
+
+DefaultAssay(so) <- "SCT"
+
+# Ensure SCT consistency once globally
+so <- PrepSCTFindMarkers(so)
+
+# =========================
+# DEFINE STAGES
+# =========================
+stages <- c("mandible_E9.5", "mandible_E10.5", "mandible_E11.5")
+
+# =========================
+# OUTPUT PDF (6 PANELS TOTAL)
+# =========================
+pdf(file.path(output_folder, "GO_Dgkk_by_stage.pdf"),
+    width = 8, height = 12)
+
+# =====================================================
+# LOOP OVER STAGES
+# =====================================================
+for (st in stages) {
+  
+  cat("\n============================\n")
+  cat("Processing:", st, "\n")
+  
+  # -------------------------
+  # SUBSET STAGE
+  # -------------------------
+  so_stage <- subset(
+    so,
+    subset = orig.ident == st
+  )
+  
+  cat("Cells in stage:\n")
+  print(table(so_stage$orig.ident))
+  
+  if (ncol(so_stage) < 50) {
+    cat("Skipping stage (too few cells)\n")
+    next
+  }
+  
+  # -------------------------
+  # REBUILD SCT (CRITICAL FIX)
+  # -------------------------
+  so_stage <- SCTransform(so_stage, verbose = FALSE)
+  so_stage <- PrepSCTFindMarkers(so_stage)
+  
+  # -------------------------
+  # DEFINE Dgkk STATUS
+  # -------------------------
+  if (!"Dgkk" %in% rownames(so_stage)) {
+    stop("Dgkk not found in dataset")
+  }
+  
+  dgkk_vals <- FetchData(so_stage, vars = "Dgkk")[,1]
+  
+  cutoff <- quantile(dgkk_vals, 0.9, na.rm = TRUE)
+  
+  so_stage$Dgkk_status <- ifelse(
+    dgkk_vals > cutoff,
+    "Dgkk_pos",
+    "Dgkk_neg"
+  )
+  
+  cat("Dgkk distribution:\n")
+  print(table(so_stage$Dgkk_status))
+  
+  if (length(unique(so_stage$Dgkk_status)) < 2) {
+    cat("Skipping stage (no variation)\n")
+    next
+  }
+  
+  # -------------------------
+  # DE ANALYSIS
+  # -------------------------
+  Idents(so_stage) <- "Dgkk_status"
+  
+  markers <- FindMarkers(
+    so_stage,
+    ident.1 = "Dgkk_pos",
+    ident.2 = "Dgkk_neg",
+    min.pct = 0.1,
+    logfc.threshold = 0.25
+  )
+  
+  # -------------------------
+  # FILTER GENES
+  # -------------------------
+  genes_up <- rownames(markers %>%
+                         filter(p_val_adj < 0.05, avg_log2FC > 0.5))
+  
+  genes_down <- rownames(markers %>%
+                           filter(p_val_adj < 0.05, avg_log2FC < -0.5))
+  
+  # -------------------------
+  # SKIP EMPTY
+  # -------------------------
+  if (length(genes_up) == 0 & length(genes_down) == 0) next
+  
+  # -------------------------
+  # ENTREZ CONVERSION
+  # -------------------------
+  gene_up_entrez <- bitr(
+    genes_up,
+    fromType = "SYMBOL",
+    toType = "ENTREZID",
+    OrgDb = org.Mm.eg.db
+  )
+  
+  gene_down_entrez <- bitr(
+    genes_down,
+    fromType = "SYMBOL",
+    toType = "ENTREZID",
+    OrgDb = org.Mm.eg.db
+  )
+  
+  # -------------------------
+  # GO ENRICHMENT
+  # -------------------------
+  ego_up <- NULL
+  ego_down <- NULL
+  
+  if (nrow(gene_up_entrez) > 0) {
+    ego_up <- enrichGO(
+      gene = gene_up_entrez$ENTREZID,
+      OrgDb = org.Mm.eg.db,
+      ont = "BP",
+      readable = TRUE
+    )
+  }
+  
+  if (nrow(gene_down_entrez) > 0) {
+    ego_down <- enrichGO(
+      gene = gene_down_entrez$ENTREZID,
+      OrgDb = org.Mm.eg.db,
+      ont = "BP",
+      readable = TRUE
+    )
+  }
+  
+  # -------------------------
+  # PLOTTING (6 PANELS TOTAL)
+  # -------------------------
+  if (!is.null(ego_up) && nrow(ego_up) > 0) {
+    print(
+      dotplot(ego_up, showCategory = 20) +
+        ggtitle(paste0("Dgkk+ ", st))
+    )
+  }
+  
+  if (!is.null(ego_down) && nrow(ego_down) > 0) {
+    print(
+      dotplot(ego_down, showCategory = 20) +
+        ggtitle(paste0("Dgkk- ", st))
+    )
+  }
+}
+
+dev.off()
+
+cat("\nDONE — 6-panel GO figure generated.\n")
